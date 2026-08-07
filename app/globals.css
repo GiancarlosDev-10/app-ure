@@ -1,0 +1,207 @@
+:root {
+  color-scheme: light dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: #0b1020;
+  color: #f2f4f8;
+}
+
+a {
+  color: inherit;
+}
+
+.container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+}
+
+.logo {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto 1.25rem;
+}
+
+.brand-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.card {
+  background: #131a2e;
+  border: 1px solid #232c46;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+label {
+  display: block;
+  font-size: 0.875rem;
+  margin-bottom: 0.35rem;
+  margin-top: 1rem;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #2c3757;
+  background: #0e1425;
+  color: inherit;
+  font-size: 1rem;
+}
+
+button {
+  margin-top: 1.5rem;
+  width: 100%;
+  padding: 0.7rem;
+  border-radius: 8px;
+  border: none;
+  background: #4f7dff;
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error {
+  color: #ff6b6b;
+  font-size: 0.875rem;
+  margin-top: 0.75rem;
+}
+
+.container-wide {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+}
+
+.nav-links {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin: 1rem 0 1.5rem;
+}
+
+.nav-links a {
+  text-decoration: none;
+  background: #1a2138;
+  border: 1px solid #2c3757;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+/* La tabla puede ser más ancha que la pantalla en mobile: que scrollee
+   ella sola en horizontal, nunca la página entera. */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid #232c46;
+  border-radius: 10px;
+}
+
+table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid #232c46;
+  white-space: nowrap;
+}
+
+thead th {
+  background: #161d33;
+  position: sticky;
+  top: 0;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge-admin {
+  background: rgba(79, 125, 255, 0.2);
+  color: #8fb0ff;
+}
+.badge-paid {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+.badge-demo {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+.badge-active {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+.badge-inactive {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.toolbar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0.75rem 0;
+}
+
+.btn-secondary {
+  margin-top: 0;
+  background: #232c46;
+  width: auto;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+}
+
+.grid-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.25rem 1rem;
+}
+
+.grid-form > div > label {
+  margin-top: 0.5rem;
+}
+
+.hint {
+  opacity: 0.65;
+  font-size: 0.8rem;
+  margin-top: 0.35rem;
+}
+
+textarea {
+  min-height: 220px;
+  resize: vertical;
+  font-family: ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 0.85rem;
+}

@@ -1,0 +1,185 @@
+-- ============================================================
+-- APP URE — Esquema de base de datos (Supabase / Postgres)
+-- ============================================================
+-- Ejecutar en: Supabase Dashboard > SQL Editor
+--
+-- Notas de diseño:
+-- - La autenticación la maneja NextAuth (Credentials + bcrypt), NO Supabase Auth.
+--   Por eso la tabla `users` es propia (no auth.users) y solo se accede
+--   desde el servidor con la service_role key.
+-- - RLS queda habilitado en todas las tablas sin policies públicas:
+--   nadie con la anon key puede leer/escribir nada. Solo la service_role
+--   key (usada exclusivamente en server actions / API routes) puede
+--   operar, porque service_role ignora RLS por diseño de Supabase.
+-- - El PDF original NUNCA se guarda. Solo se persiste el markdown ya
+--   procesado (columna study_content.markdown).
+-- ============================================================
+
+create extension if not exists "pgcrypto";
+
+-- ------------------------------------------------------------
+-- Tabla: users
+-- Mapeo de los campos pedidos:
+--   id                  -> id
+--   correo              -> email
+--   contraseña hasheada -> password_hash (bcrypt)
+--   rol                 -> role ('admin' | 'demo' | 'paid')
+--   activo              -> active
+--   fecha vencimiento   -> expiration_date (default 2026-09-30)
+--   preguntas usadas    -> questions_used
+--   límite de preguntas -> questions_limit (default 2000)
+-- ------------------------------------------------------------
+create table if not exists public.users (
+  id                          uuid primary key default gen_random_uuid(),
+  email                       text not null unique,
+  password_hash               text not null,
+  role                        text not null default 'demo'
+                              check (role in ('admin', 'demo', 'paid')),
+  active                      boolean not null default true,
+  expiration_date             date not null default '2026-09-30',
+  questions_used              integer not null default 0 check (questions_used >= 0),
+  questions_limit             integer not null default 2000 check (questions_limit > 0),
+  -- Umbral para el aviso "cerca del límite" que se ve en /admin (banner
+  -- calculado en vivo: questions_used >= alert_threshold). No dispara
+  -- correo, solo se muestra en el dashboard del admin.
+  alert_threshold             integer not null default 1800,
+  -- Control de sesión única por cuenta:
+  current_session_token       text,
+  current_session_created_at  timestamptz,
+  created_at                  timestamptz not null default now(),
+  updated_at                  timestamptz not null default now()
+);
+
+create index if not exists users_email_idx on public.users (lower(email));
+create index if not exists users_role_idx on public.users (role);
+
+-- ------------------------------------------------------------
+-- Tabla: study_content
+-- Markdown subido por el admin y asignado a un usuario puntual.
+-- El PDF nunca se sube: solo llega texto/markdown ya convertido.
+-- ------------------------------------------------------------
+create table if not exists public.study_content (
+  id            uuid primary key default gen_random_uuid(),
+  title         text not null,
+  markdown      text not null,
+  assigned_to   uuid not null references public.users (id) on delete cascade,
+  created_by    uuid not null references public.users (id) on delete restrict,
+  active        boolean not null default true,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+create index if not exists study_content_assigned_to_idx on public.study_content (assigned_to);
+
+-- ------------------------------------------------------------
+-- Tabla: quiz_questions
+-- Registro de cada pregunta generada por OpenAI a partir del
+-- markdown, la dificultad elegida y la respuesta del usuario.
+-- Sirve de auditoría y para llevar questions_used de forma exacta.
+-- ------------------------------------------------------------
+create table if not exists public.quiz_questions (
+  id              uuid primary key default gen_random_uuid(),
+  user_id         uuid not null references public.users (id) on delete cascade,
+  content_id      uuid not null references public.study_content (id) on delete cascade,
+  difficulty      text not null check (difficulty in ('basico', 'intermedio', 'avanzado')),
+  question        text not null,
+  options         jsonb not null, -- ["opción A", "opción B", "opción C", "opción D"]
+  correct_index   integer not null check (correct_index between 0 and 3),
+  explanation     text not null, -- se guarda al generar, se muestra recién al responder
+  user_answer_index integer,
+  is_correct      boolean,
+  answered_at     timestamptz,
+  created_at      timestamptz not null default now()
+);
+
+create index if not exists quiz_questions_user_id_idx on public.quiz_questions (user_id);
+
+-- ------------------------------------------------------------
+-- Tabla: login_attempts
+-- Soporte para rate limiting (5 intentos) en el login.
+-- ------------------------------------------------------------
+create table if not exists public.login_attempts (
+  id            uuid primary key default gen_random_uuid(),
+  identifier    text not null, -- normalmente email normalizado en minúsculas
+  ip            text,
+  success       boolean not null,
+  attempted_at  timestamptz not null default now()
+);
+
+create index if not exists login_attempts_identifier_idx on public.login_attempts (identifier, attempted_at desc);
+
+-- ------------------------------------------------------------
+-- Trigger genérico para mantener updated_at al día
+-- ------------------------------------------------------------
+create or replace function public.set_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_users_updated_at on public.users;
+create trigger trg_users_updated_at
+  before update on public.users
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists trg_content_updated_at on public.study_content;
+create trigger trg_content_updated_at
+  before update on public.study_content
+  for each row execute function public.set_updated_at();
+
+-- ------------------------------------------------------------
+-- Función: increment_questions_used
+-- Incrementa questions_used de forma atómica (UPDATE ... RETURNING en
+-- una sola sentencia, sin round-trip de "leer, sumar en la app, escribir"
+-- que podría pisarse entre requests concurrentes del mismo usuario).
+-- ------------------------------------------------------------
+create or replace function public.increment_questions_used(p_user_id uuid)
+returns table (
+  questions_used   integer,
+  questions_limit  integer
+) as $$
+begin
+  return query
+    update public.users
+    set questions_used = users.questions_used + 1
+    where users.id = p_user_id
+    returning users.questions_used, users.questions_limit;
+end;
+$$ language plpgsql;
+
+-- ------------------------------------------------------------
+-- Row Level Security: habilitado, sin policies para anon/authenticated.
+-- Todo el acceso ocurre server-side con la service_role key.
+-- ------------------------------------------------------------
+alter table public.users enable row level security;
+alter table public.study_content enable row level security;
+alter table public.quiz_questions enable row level security;
+alter table public.login_attempts enable row level security;
+
+-- ------------------------------------------------------------
+-- Grants: RLS controla QUÉ filas puede tocar cada rol, pero primero
+-- Postgres exige que el rol tenga permiso para tocar la tabla. El rol
+-- "service_role" (el que usa la SUPABASE_SERVICE_ROLE_KEY / secret key)
+-- ignora RLS por completo, pero igual necesita estos grants explícitos;
+-- si las tablas se crearon desde el SQL Editor en vez del Table Editor,
+-- Supabase no los otorga solo. anon/authenticated NO reciben nada acá
+-- a propósito: nunca deben poder tocar estas tablas directo.
+-- ------------------------------------------------------------
+grant usage on schema public to service_role;
+grant all on all tables in schema public to service_role;
+grant all on all sequences in schema public to service_role;
+grant execute on all functions in schema public to service_role;
+
+alter default privileges in schema public grant all on tables to service_role;
+alter default privileges in schema public grant all on sequences to service_role;
+alter default privileges in schema public grant execute on functions to service_role;
+
+-- ------------------------------------------------------------
+-- Seed opcional: primer usuario admin (cambia el hash antes de correrlo).
+-- Genera el hash con bcrypt (ver lib/password.ts) y pégalo aquí, o
+-- crea el admin desde un script/API en vez de SQL a mano.
+-- ------------------------------------------------------------
+-- insert into public.users (email, password_hash, role, active)
+-- values ('admin@tudominio.com', '$2a$12$REEMPLAZAR_HASH', 'admin', true);
