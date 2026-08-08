@@ -19,11 +19,27 @@ const DIFFICULTY_GUIDE: Record<Difficulty, string> = {
     'Preguntas de análisis, comparación o síntesis: requieren entender el material en profundidad, no solo memorizarlo.',
 };
 
-// Tope de caracteres que se mandan como contexto al modelo. Si el
-// markdown asignado es más largo, se corta acá. Para documentos muy
-// extensos lo correcto a futuro es trocear/indexar (RAG); por ahora,
-// con gpt-4o-mini y materiales de estudio típicos, esto alcanza.
-const MAX_CONTEXT_CHARS = 8000;
+// Tope de caracteres que se mandan como contexto al modelo por llamada.
+// gpt-4o-mini soporta ~128k tokens de contexto (~350-450k caracteres en
+// español); 60.000 cubre documentos largos reales con margen de sobra,
+// sin disparar el costo/latencia por pregunta innecesariamente. Para
+// documentos aun más largos que este tope, ver pickContextWindow abajo.
+const MAX_CONTEXT_CHARS = 60_000;
+
+/**
+ * Si el markdown entra completo dentro del tope, se manda entero. Si no,
+ * en vez de recortar siempre desde el principio (lo que dejaría el resto
+ * del documento sin usar nunca), se toma una ventana de tamaño fijo pero
+ * en una posición aleatoria — así, a lo largo de varias preguntas
+ * generadas, se termina cubriendo el documento completo en vez de
+ * repetir siempre la introducción.
+ */
+function pickContextWindow(markdown: string): string {
+  if (markdown.length <= MAX_CONTEXT_CHARS) return markdown;
+  const maxStart = markdown.length - MAX_CONTEXT_CHARS;
+  const start = Math.floor(Math.random() * maxStart);
+  return markdown.slice(start, start + MAX_CONTEXT_CHARS);
+}
 
 const generatedQuestionSchema = z.object({
   question: z.string().min(1),
@@ -40,7 +56,7 @@ export async function generateQuestion(
     throw new Error('Falta configurar OPENAI_API_KEY en el servidor.');
   }
 
-  const context = markdown.slice(0, MAX_CONTEXT_CHARS);
+  const context = pickContextWindow(markdown);
 
   const completion = await client.chat.completions.create({
     model,

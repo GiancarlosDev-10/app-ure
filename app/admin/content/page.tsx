@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import Link from 'next/link';
 import type { AdminContentSummary, AdminUserSummary } from '@/types';
 
@@ -106,12 +106,33 @@ function UploadForm({
 }) {
   const [title, setTitle] = useState('');
   const [markdown, setMarkdown] = useState('');
+  const [fileName, setFileName] = useState<string | null>(null);
   const [assignedTo, setAssignedTo] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const assignableUsers = users.filter((u) => u.role !== 'admin');
+
+  async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError(null);
+    try {
+      const text = await file.text();
+      setMarkdown(text);
+      setFileName(file.name);
+      // Si todavía no pusiste título, lo completamos con el nombre del
+      // archivo (sin la extensión) para no dejarlo vacío.
+      if (!title.trim()) {
+        setTitle(file.name.replace(/\.(md|markdown|txt)$/i, ''));
+      }
+    } catch {
+      setError('No se pudo leer el archivo. Probá pegando el contenido directo.');
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -130,7 +151,9 @@ function UploadForm({
 
       setTitle('');
       setMarkdown('');
+      setFileName(null);
       setAssignedTo('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
       setSuccess('Contenido asignado correctamente.');
       onCreated();
     } catch (e) {
@@ -168,14 +191,31 @@ function UploadForm({
         </p>
       )}
 
+      <label htmlFor="md-file">Cargar desde archivo (opcional)</label>
+      <input
+        id="md-file"
+        ref={fileInputRef}
+        type="file"
+        accept=".md,.markdown,.txt,text/markdown,text/plain"
+        onChange={handleFileChange}
+      />
+      {fileName && <p className="hint">Cargado: {fileName}</p>}
+
       <label htmlFor="markdown">Contenido (markdown)</label>
       <textarea
         id="markdown"
         required
         value={markdown}
-        onChange={(e) => setMarkdown(e.target.value)}
-        placeholder="# Tema&#10;&#10;Contenido del material ya convertido a markdown…"
+        onChange={(e) => {
+          setMarkdown(e.target.value);
+          setFileName(null); // si lo edita a mano, ya no es "el archivo tal cual"
+        }}
+        placeholder="# Tema&#10;&#10;Contenido del material ya convertido a markdown… (o cargalo desde un archivo arriba)"
       />
+      <p className="hint">
+        {markdown.length.toLocaleString('es-PE')} / 200.000 caracteres
+        {markdown.length > 200_000 && ' — supera el máximo permitido'}
+      </p>
 
       <button type="submit" disabled={saving}>
         {saving ? 'Subiendo…' : 'Asignar contenido'}
