@@ -1,13 +1,20 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
-import { Inter } from 'next/font/google';
-import { Providers } from './providers';
-import { SessionGuard } from './session-guard';
+import { Inter, JetBrains_Mono } from 'next/font/google';
+import { Providers } from '@/components/providers';
+import { SessionGuard } from '@/components/session-guard';
 import './globals.css';
 
-// Inter: la sans-serif que más se parece a la del mockup de referencia
-// (portal DIGPE). Next.js la sirve self-hosted, sin request externo.
-const inter = Inter({ subsets: ['latin'], display: 'swap' });
+// Inter: la sans-serif del mockup de referencia (portal DIGPE) — se usa
+// solo en los h1 (ver globals.css). JetBrains Mono: la monoespaciada
+// tipo "dev tool" para el resto del cuerpo. Las dos self-hosted por
+// Next.js, sin request externo en cada visita.
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'App URE — Estudio',
@@ -33,7 +40,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es">
-      <body className={inter.className}>
+      <body className={`${inter.variable} ${jetbrainsMono.variable}`}>
         <Providers>
           <SessionGuard />
           {children}

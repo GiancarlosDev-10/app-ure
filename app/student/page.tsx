@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import type { Difficulty } from '@/types';
-import { Logo } from '../logo';
-import { SignOutButton } from '../sign-out-button';
+import { Logo } from '@/components/logo';
+import { SignOutButton } from '@/components/sign-out-button';
 
 interface ContentOption {
   id: string;

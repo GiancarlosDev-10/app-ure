@@ -2,8 +2,8 @@ import { getServerSession } from 'next-auth';
 import Link from 'next/link';
 import { authOptions } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
-import { SignOutButton } from '../sign-out-button';
-import { Logo } from '../logo';
+import { SignOutButton } from '@/components/sign-out-button';
+import { Logo } from '@/components/logo';
 
 interface UsageAlertRow {
   id: string;
@@ -29,8 +29,12 @@ async function getUsersNearLimit(): Promise<UsageAlertRow[]> {
 }
 
 export default async function AdminPage() {
-  const session = await getServerSession(authOptions);
-  const usersNearLimit = await getUsersNearLimit();
+  // Las dos consultas no dependen entre sí: se disparan en paralelo en
+  // vez de una tras otra (cada una cruza a Supabase en otra región).
+  const [session, usersNearLimit] = await Promise.all([
+    getServerSession(authOptions),
+    getUsersNearLimit(),
+  ]);
 
   return (
     <main className="container">

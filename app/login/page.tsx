@@ -1,9 +1,10 @@
 'use client';
 
 import { Suspense, useState, type FormEvent } from 'react';
-import { signIn } from 'next-auth/react';
+import { signIn, getSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Logo } from '../logo';
+import { Logo } from '@/components/logo';
+import { EyeIcon, EyeOffIcon } from '@/components/icons';
 
 const URL_ERROR_MESSAGES: Record<string, string> = {
   'session-invalidated':
@@ -42,14 +43,21 @@ function LoginForm() {
       redirect: false,
     });
 
-    setLoading(false);
-
     if (res?.error) {
+      setLoading(false);
       setError(res.error);
       return;
     }
 
-    router.push('/');
+    // En vez de mandar a "/" y que esa página vuelva a resolver el rol
+    // con su propia consulta a Supabase (otro round-trip completo + un
+    // render de página de más), lo resolvemos acá con el fetch de sesión
+    // que de todas formas hace falta hacer una vez logueado.
+    const session = await getSession();
+    setLoading(false);
+
+    const destination = session?.user?.role === 'admin' ? '/admin' : '/student';
+    router.push(destination);
     router.refresh();
   }
 
@@ -88,7 +96,7 @@ function LoginForm() {
               aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
               tabIndex={-1}
             >
-              {showPassword ? '🙈' : '👁️'}
+              {showPassword ? <EyeOffIcon /> : <EyeIcon />}
             </button>
           </div>
 
