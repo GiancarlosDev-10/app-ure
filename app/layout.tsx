@@ -1,8 +1,13 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
+import { Inter } from 'next/font/google';
 import { Providers } from './providers';
 import { SessionGuard } from './session-guard';
 import './globals.css';
+
+// Inter: la sans-serif que más se parece a la del mockup de referencia
+// (portal DIGPE). Next.js la sirve self-hosted, sin request externo.
+const inter = Inter({ subsets: ['latin'], display: 'swap' });
 
 export const metadata: Metadata = {
   title: 'App URE — Estudio',
@@ -28,7 +33,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es">
-      <body>
+      <body className={inter.className}>
         <Providers>
           <SessionGuard />
           {children}

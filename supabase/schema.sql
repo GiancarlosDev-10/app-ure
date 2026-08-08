@@ -150,6 +150,35 @@ end;
 $$ language plpgsql;
 
 -- ------------------------------------------------------------
+-- Función: complete_login
+-- Junta en una sola llamada (un solo round-trip de red) las 3 escrituras
+-- que pasan justo después de validar la contraseña: registrar el intento
+-- exitoso, limpiar los intentos fallidos previos, y setear el nuevo
+-- token de sesión única. Antes eran 3 llamadas HTTP secuenciales
+-- separadas; en Vercel Hobby (función en iad1, Supabase en sa-east-1)
+-- cada una paga el cruce de continente, así que juntarlas en una función
+-- de Postgres ahorra ese costo dos veces.
+-- ------------------------------------------------------------
+create or replace function public.complete_login(
+  p_user_id uuid,
+  p_identifier text,
+  p_session_token text
+) returns void as $$
+begin
+  insert into public.login_attempts (identifier, success)
+  values (p_identifier, true);
+
+  delete from public.login_attempts
+  where identifier = p_identifier and success = false;
+
+  update public.users
+  set current_session_token = p_session_token,
+      current_session_created_at = now()
+  where id = p_user_id;
+end;
+$$ language plpgsql;
+
+-- ------------------------------------------------------------
 -- Row Level Security: habilitado, sin policies para anon/authenticated.
 -- Todo el acceso ocurre server-side con la service_role key.
 -- ------------------------------------------------------------

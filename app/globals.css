@@ -23,6 +23,17 @@ a {
   padding: 2rem 1.25rem;
 }
 
+.center-screen {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.center-screen > .card {
+  width: 100%;
+}
+
 .logo {
   display: block;
   max-width: 100%;
@@ -85,6 +96,33 @@ button:disabled {
   color: #ff6b6b;
   font-size: 0.875rem;
   margin-top: 0.75rem;
+}
+
+.input-toggle-wrap {
+  position: relative;
+}
+
+.input-toggle-wrap input {
+  padding-right: 2.75rem;
+}
+
+.toggle-visibility-btn {
+  position: absolute;
+  right: 0.4rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: auto;
+  margin-top: 0;
+  padding: 0.3rem 0.5rem;
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.toggle-visibility-btn:hover {
+  opacity: 0.8;
 }
 
 .container-wide {

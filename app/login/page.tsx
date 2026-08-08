@@ -25,6 +25,7 @@ function LoginForm() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(
     urlError ? URL_ERROR_MESSAGES[urlError] ?? null : null
@@ -53,7 +54,7 @@ function LoginForm() {
   }
 
   return (
-    <main className="container">
+    <main className="container center-screen">
       <div className="card">
         <div className="brand-header">
           <Logo size={72} />
@@ -71,14 +72,25 @@ function LoginForm() {
           />
 
           <label htmlFor="password">Contraseña</label>
-          <input
-            id="password"
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-          />
+          <div className="input-toggle-wrap">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+            <button
+              type="button"
+              className="toggle-visibility-btn"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              tabIndex={-1}
+            >
+              {showPassword ? '🙈' : '👁️'}
+            </button>
+          </div>
 
           <button type="submit" disabled={loading}>
             {loading ? 'Ingresando…' : 'Ingresar'}

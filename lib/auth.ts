@@ -3,7 +3,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { randomUUID } from 'crypto';
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { verifyPassword } from './password';
-import { assertNotRateLimited, normalizeIdentifier, recordLoginAttempt } from './rateLimit';
+import { isRateLimited, normalizeIdentifier, recordFailedAttempt, RATE_LIMIT_WINDOW_MINUTES } from './rateLimit';
 import type { Role, UserRow } from '@/types';
 
 const GENERIC_LOGIN_ERROR = 'Credenciales inválidas.';
@@ -31,15 +31,24 @@ export const authOptions: AuthOptions = {
           throw new Error(GENERIC_LOGIN_ERROR);
         }
 
-        // 1) Rate limiting: 5 intentos fallidos por ventana de 15 min.
-        await assertNotRateLimited(email);
-
         const supabase = getSupabaseAdmin();
-        const { data: userRow, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', email)
-          .maybeSingle<UserRow>();
+
+        // 1) Rate limit y búsqueda del usuario no dependen entre sí:
+        //    se disparan en paralelo en vez de una tras otra (importa
+        //    especialmente acá porque la función y la base están en
+        //    regiones distintas — ver nota en supabase/schema.sql).
+        const [blocked, userResult] = await Promise.all([
+          isRateLimited(email),
+          supabase.from('users').select('*').eq('email', email).maybeSingle<UserRow>(),
+        ]);
+
+        if (blocked) {
+          throw new Error(
+            `Demasiados intentos fallidos. Probá de nuevo en ${RATE_LIMIT_WINDOW_MINUTES} minutos.`
+          );
+        }
+
+        const { data: userRow, error } = userResult;
 
         if (error) {
           console.error('auth: error consultando usuario', error);
@@ -47,45 +56,39 @@ export const authOptions: AuthOptions = {
         }
 
         if (!userRow) {
-          await recordLoginAttempt(email, false);
+          await recordFailedAttempt(email);
           throw new Error(GENERIC_LOGIN_ERROR);
         }
 
         if (!userRow.active) {
-          await recordLoginAttempt(email, false);
+          await recordFailedAttempt(email);
           throw new Error('Tu cuenta está inactiva. Contactá al administrador.');
         }
 
         const today = new Date().toISOString().slice(0, 10);
         if (userRow.expiration_date && userRow.expiration_date < today) {
-          await recordLoginAttempt(email, false);
+          await recordFailedAttempt(email);
           throw new Error('Tu acceso venció. Contactá al administrador para renovarlo.');
         }
 
         const passwordOk = await verifyPassword(password, userRow.password_hash);
         if (!passwordOk) {
-          await recordLoginAttempt(email, false);
+          await recordFailedAttempt(email);
           throw new Error(GENERIC_LOGIN_ERROR);
         }
 
-        // 2) Login correcto: éxito registrado y limpieza de intentos fallidos previos.
-        await recordLoginAttempt(email, true);
-
-        // 3) Sesión única por cuenta: se genera un nuevo token y se
-        //    sobreescribe el anterior. Cualquier sesión activa con el
-        //    token viejo quedará invalidada en el próximo request (ver
-        //    callback `jwt` más abajo).
+        // 2) Login correcto: registrar éxito + limpiar intentos fallidos +
+        //    setear el nuevo token de sesión única, las 3 en una sola
+        //    llamada RPC (antes eran 3 round-trips secuenciales).
         const sessionToken = randomUUID();
-        const { error: updateError } = await supabase
-          .from('users')
-          .update({
-            current_session_token: sessionToken,
-            current_session_created_at: new Date().toISOString(),
-          })
-          .eq('id', userRow.id);
+        const { error: completeError } = await supabase.rpc('complete_login', {
+          p_user_id: userRow.id,
+          p_identifier: email,
+          p_session_token: sessionToken,
+        });
 
-        if (updateError) {
-          console.error('auth: error actualizando sesión única', updateError);
+        if (completeError) {
+          console.error('auth: error en complete_login', completeError);
           throw new Error('No se pudo iniciar sesión. Probá de nuevo.');
         }
 

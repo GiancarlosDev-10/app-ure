@@ -15,10 +15,12 @@ export function normalizeIdentifier(email: string): string {
 }
 
 /**
- * Lanza si el identificador (normalmente el email) superó el máximo de
- * intentos fallidos permitidos dentro de la ventana de tiempo.
+ * Devuelve si el identificador ya superó el máximo de intentos fallidos
+ * en la ventana de tiempo. No lanza (a diferencia de la versión anterior)
+ * para poder correrla en paralelo con otras consultas vía Promise.all,
+ * en vez de bloquear la cadena de requests secuenciales.
  */
-export async function assertNotRateLimited(identifier: string): Promise<void> {
+export async function isRateLimited(identifier: string): Promise<boolean> {
   const supabase = getSupabaseAdmin();
   const since = new Date(Date.now() - WINDOW_MINUTES * 60 * 1000).toISOString();
 
@@ -33,39 +35,28 @@ export async function assertNotRateLimited(identifier: string): Promise<void> {
     // No bloqueamos el login por un fallo de la tabla de rate limit,
     // pero sí lo dejamos registrado para revisar.
     console.error('rateLimit: error consultando login_attempts', error);
-    return;
+    return false;
   }
 
-  if ((count ?? 0) >= MAX_ATTEMPTS) {
-    throw new Error(
-      `Demasiados intentos fallidos. Probá de nuevo en ${WINDOW_MINUTES} minutos.`
-    );
-  }
+  return (count ?? 0) >= MAX_ATTEMPTS;
 }
 
-export async function recordLoginAttempt(
-  identifier: string,
-  success: boolean,
-  ip?: string | null
-): Promise<void> {
+export const RATE_LIMIT_WINDOW_MINUTES = WINDOW_MINUTES;
+
+/**
+ * Registra un intento de login fallido. El caso de éxito ya no pasa por
+ * acá: se resuelve en una sola llamada RPC junto con el resto de las
+ * escrituras post-login (ver lib/auth.ts + complete_login en Postgres).
+ */
+export async function recordFailedAttempt(identifier: string, ip?: string | null): Promise<void> {
   const supabase = getSupabaseAdmin();
   const { error } = await supabase.from('login_attempts').insert({
     identifier,
-    success,
+    success: false,
     ip: ip ?? null,
   });
 
   if (error) {
-    console.error('rateLimit: error registrando intento de login', error);
-  }
-
-  // Si el intento fue exitoso, limpiamos el historial de fallos previos
-  // para no dejar al usuario "medio bloqueado" en su próximo login.
-  if (success) {
-    await supabase
-      .from('login_attempts')
-      .delete()
-      .eq('identifier', identifier)
-      .eq('success', false);
+    console.error('rateLimit: error registrando intento fallido', error);
   }
 }
