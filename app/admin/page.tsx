@@ -2,7 +2,7 @@ import { getServerSession } from 'next-auth';
 import Link from 'next/link';
 import { authOptions } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
-import { SignOutButton } from '@/components/sign-out-button';
+import { PageHeader } from '@/components/page-header';
 import { Logo } from '@/components/logo';
 
 interface UsageAlertRow {
@@ -39,11 +39,11 @@ export default async function AdminPage() {
   return (
     <main className="container">
       <div className="card">
+        <PageHeader email={session?.user?.email} />
         <div className="brand-header">
           <Logo size={56} />
           <h1>Panel de administración</h1>
         </div>
-        <p>Sesión: {session?.user?.email}</p>
 
         <nav className="nav-links" style={{ justifyContent: 'center' }}>
           <Link href="/admin/content">📄 Contenido</Link>
@@ -73,8 +73,6 @@ export default async function AdminPage() {
             </ul>
           </div>
         )}
-
-        <SignOutButton />
       </div>
     </main>
   );

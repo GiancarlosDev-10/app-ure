@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { PageHeader } from '@/components/page-header';
 import type { AdminUserSummary, Role } from '@/types';
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -14,6 +16,7 @@ const DEFAULT_EXPIRATION = '2026-09-30';
 const DEFAULT_LIMIT = 2000;
 
 export default function AdminUsersPage() {
+  const { data: session } = useSession();
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
@@ -39,6 +42,7 @@ export default function AdminUsersPage() {
 
   return (
     <main className="container-wide">
+      <PageHeader email={session?.user?.email} />
       <nav className="nav-links">
         <Link href="/admin">← Panel</Link>
         <Link href="/admin/content">Contenido</Link>

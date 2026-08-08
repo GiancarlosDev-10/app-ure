@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { PageHeader } from '@/components/page-header';
 import type { AdminContentSummary, AdminUserSummary } from '@/types';
 
 export default function AdminContentPage() {
+  const { data: session } = useSession();
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
   const [content, setContent] = useState<AdminContentSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +42,7 @@ export default function AdminContentPage() {
 
   return (
     <main className="container-wide">
+      <PageHeader email={session?.user?.email} />
       <nav className="nav-links">
         <Link href="/admin">← Panel</Link>
         <Link href="/admin/users">Usuarios</Link>

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import type { Difficulty } from '@/types';
 import { Logo } from '@/components/logo';
-import { SignOutButton } from '@/components/sign-out-button';
+import { PageHeader } from '@/components/page-header';
 
 interface ContentOption {
   id: string;
@@ -110,13 +110,11 @@ export default function StudentPage() {
   return (
     <main className="container">
       <div className="card">
+        <PageHeader email={session?.user?.email} />
         <div className="brand-header">
           <Logo size={56} />
-          <h1>Práctica</h1>
+          <h1>¡A darle!</h1>
         </div>
-        <p className="hint" style={{ textAlign: 'center' }}>
-          Sesión: {session?.user?.email}
-        </p>
 
         {loadingContent && <p className="hint">Cargando tu contenido…</p>}
 
@@ -157,7 +155,9 @@ export default function StudentPage() {
         {question && (
           <div style={{ marginTop: '1.25rem' }}>
             <span className="badge badge-demo">{DIFFICULTY_LABEL[difficulty]}</span>
-            <p style={{ fontWeight: 600, marginTop: '0.75rem' }}>{question.question}</p>
+            <p style={{ fontWeight: 600, marginTop: '0.75rem', textAlign: 'justify' }}>
+              {question.question}
+            </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {question.options.map((opt, i) => {
@@ -181,9 +181,9 @@ export default function StudentPage() {
                         : isWrongPick
                           ? '#5a1e1e'
                           : isSelected
-                            ? '#2a3a66'
+                            ? 'var(--accent-soft)'
                             : '#0e1425',
-                      border: isSelected ? '1px solid #4f7dff' : '1px solid #2c3757',
+                      border: isSelected ? '1px solid var(--accent)' : '1px solid #2c3757',
                     }}
                   >
                     {opt}
@@ -222,10 +222,6 @@ export default function StudentPage() {
         )}
 
         {error && <p className="error">{error}</p>}
-
-        <div style={{ marginTop: '1.5rem' }}>
-          <SignOutButton />
-        </div>
       </div>
     </main>
   );

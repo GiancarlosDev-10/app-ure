@@ -1,5 +1,11 @@
 :root {
   color-scheme: light dark;
+  /* Dorado/ámbar institucional — reemplaza el azul genérico como color
+     de acento principal (botones, elementos interactivos destacados). */
+  --accent: #c9a227;
+  --accent-hover: #ddb52f;
+  --accent-text: #16130a;
+  --accent-soft: rgba(201, 162, 39, 0.16);
 }
 
 * {
@@ -52,6 +58,49 @@ a {
   text-align: center;
 }
 
+/* Barra superior: cerrar sesión a la izquierda, avatar del usuario a la
+   derecha. Reemplaza el "Sesión: correo@..." + botón suelto al final. */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.icon-btn {
+  width: auto;
+  margin-top: 0;
+  padding: 0.5rem;
+  background: transparent;
+  border: 1px solid #2c3757;
+  border-radius: 8px;
+  color: #cbd3e8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: transparent;
+}
+
+.user-avatar {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
 .card {
   background: #131a2e;
   border: 1px solid #232c46;
@@ -64,6 +113,17 @@ label {
   font-size: 0.875rem;
   margin-bottom: 0.35rem;
   margin-top: 1rem;
+}
+
+input,
+textarea,
+select,
+button {
+  /* Los controles de formulario no heredan la fuente de la página por
+     defecto en los navegadores (usan la fuente nativa del SO) — sin
+     esto, los botones/inputs quedan con una tipografía distinta al
+     resto del texto aunque el body ya esté en JetBrains Mono. */
+  font-family: inherit;
 }
 
 input,
@@ -84,11 +144,15 @@ button {
   padding: 0.7rem;
   border-radius: 8px;
   border: none;
-  background: #4f7dff;
-  color: white;
-  font-weight: 600;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 700;
   font-size: 1rem;
   cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: var(--accent-hover);
 }
 
 button:disabled {
@@ -223,9 +287,14 @@ thead th {
 .btn-secondary {
   margin-top: 0;
   background: #232c46;
+  color: #f2f4f8;
   width: auto;
   padding: 0.4rem 0.8rem;
   font-size: 0.8rem;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #2c3757;
 }
 
 .grid-form {
