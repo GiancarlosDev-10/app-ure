@@ -109,7 +109,7 @@ export default function StudentPage() {
 
   return (
     <main className="container">
-      <div className="card">
+      <div>
         <PageHeader email={session?.user?.email} />
         <div className="brand-header">
           <Logo size={56} />
@@ -176,6 +176,7 @@ export default function StudentPage() {
                       marginTop: 0,
                       textAlign: 'left',
                       fontWeight: 400,
+                      color: '#f2f4f8',
                       background: isCorrectOption
                         ? '#16532e'
                         : isWrongPick

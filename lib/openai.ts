@@ -73,6 +73,12 @@ export async function generateQuestion(
           '"correctIndex" es la posición (0 a 3) de la opción correcta dentro de "options".',
           'Las 4 opciones deben ser plausibles y del mismo estilo (nada de "todas las anteriores" ni relleno obvio).',
           '"explanation" debe justificar la respuesta correcta citando o parafraseando el material.',
+          'La pregunta se redacta como una pregunta de examen normal, directa: nunca menciones "el material",',
+          '"el texto", "el documento" ni frases como "según el material de estudio" dentro de "question".',
+          'Si en el material aparecen marcadores de página con el formato exacto [página N], agregá al final',
+          'de "explanation" la línea "Fuente: página N" usando el marcador más cercano ANTES del fragmento',
+          'que usaste para justificar la respuesta. Si el material NO tiene marcadores de página, no inventes',
+          'ningún número ni menciones "página" — nunca falsifiques una fuente que no esté en el texto.',
         ].join(' '),
       },
       {
