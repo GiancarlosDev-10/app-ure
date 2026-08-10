@@ -19,6 +19,44 @@ body {
   color: #f2f4f8;
 }
 
+/* Efecto "máquina de escribir": revela --tw-chars caracteres de a uno.
+   Solo funciona bien con fuente monoespaciada (ya lo es toda la app),
+   porque cada paso de la animación avanza exactamente 1ch = 1 letra. */
+@keyframes typewriter-reveal {
+  from {
+    width: 0;
+  }
+  to {
+    width: calc(var(--tw-chars, 10) * 1ch);
+  }
+}
+
+@keyframes typewriter-caret {
+  50% {
+    border-color: transparent;
+  }
+}
+
+.typewriter {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: bottom;
+  border-right: 0.12em solid var(--accent);
+  width: 0;
+  animation:
+    typewriter-reveal 0.9s steps(var(--tw-chars, 10), end) forwards,
+    typewriter-caret 0.7s step-end 4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typewriter {
+    animation: none;
+    border-right: none;
+    width: auto;
+  }
+}
+
 a {
   color: inherit;
 }

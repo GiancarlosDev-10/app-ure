@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import type { Difficulty } from '@/types';
 import { Logo } from '@/components/logo';
 import { PageHeader } from '@/components/page-header';
+import { TypewriterText } from '@/components/typewriter-text';
 
 interface ContentOption {
   id: string;
@@ -121,7 +122,9 @@ export default function StudentPage() {
         <PageHeader email={session?.user?.email} />
         <div className="brand-header">
           <Logo size={56} />
-          <h1>¡A darle!</h1>
+          <h1>
+            <TypewriterText text="¡A darle!" storageKey="student-adarle" />
+          </h1>
         </div>
 
         {loadingContent && <p className="hint">Cargando tu contenido…</p>}

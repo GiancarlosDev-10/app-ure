@@ -5,6 +5,7 @@ import { signIn, getSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Logo } from '@/components/logo';
 import { EyeIcon, EyeOffIcon } from '@/components/icons';
+import { TypewriterText } from '@/components/typewriter-text';
 
 const URL_ERROR_MESSAGES: Record<string, string> = {
   'session-invalidated':
@@ -66,7 +67,9 @@ function LoginForm() {
       <div>
         <div className="brand-header">
           <Logo size={72} />
-          <h1>Bienvenido</h1>
+          <h1>
+            <TypewriterText text="Bienvenido" storageKey="login-bienvenido" />
+          </h1>
         </div>
         <form onSubmit={handleSubmit}>
           <label htmlFor="email">Correo</label>
