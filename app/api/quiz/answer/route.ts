@@ -3,7 +3,10 @@ import { requireRole, handleApiError, ApiAuthError } from '@/lib/apiAuth';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { answerQuestionSchema } from '@/lib/schemas';
 
-interface IncrementResult {
+interface SubmitAnswerResult {
+  correct_index: number;
+  explanation: string;
+  is_correct: boolean;
   questions_used: number;
   questions_limit: number;
 }
@@ -24,54 +27,39 @@ export async function POST(req: Request) {
 
     const supabase = getSupabaseAdmin();
 
-    const { data: question, error: questionError } = await supabase
-      .from('quiz_questions')
-      .select('id, user_id, correct_index, explanation, answered_at')
-      .eq('id', parsed.data.questionId)
-      .single();
+    // Antes eran 3 llamadas seguidas (buscar la pregunta, guardar la
+    // respuesta, incrementar el contador); ahora es 1 sola función de
+    // Postgres que hace las 3 cosas de forma atómica.
+    const { data: rows, error } = await supabase.rpc('submit_answer', {
+      p_question_id: parsed.data.questionId,
+      p_user_id: userId,
+      p_selected_index: parsed.data.selectedIndex,
+    });
 
-    if (questionError || !question) {
-      throw new ApiAuthError('La pregunta no existe.', 404);
+    if (error) {
+      if (error.message.includes('question_not_found')) {
+        throw new ApiAuthError('La pregunta no existe.', 404);
+      }
+      if (error.message.includes('question_not_owned')) {
+        throw new ApiAuthError('Esa pregunta no te pertenece.', 403);
+      }
+      if (error.message.includes('already_answered')) {
+        throw new ApiAuthError('Esta pregunta ya fue respondida.', 409);
+      }
+      throw error;
     }
-    if (question.user_id !== userId) {
-      throw new ApiAuthError('Esa pregunta no te pertenece.', 403);
+
+    const result = (rows as SubmitAnswerResult[] | null)?.[0];
+    if (!result) {
+      throw new Error('submit_answer no devolvió resultado.');
     }
-    if (question.answered_at) {
-      throw new ApiAuthError('Esta pregunta ya fue respondida.', 409);
-    }
-
-    const isCorrect = parsed.data.selectedIndex === question.correct_index;
-
-    const { error: updateError } = await supabase
-      .from('quiz_questions')
-      .update({
-        user_answer_index: parsed.data.selectedIndex,
-        is_correct: isCorrect,
-        answered_at: new Date().toISOString(),
-      })
-      .eq('id', question.id);
-
-    if (updateError) throw updateError;
-
-    // Incremento atómico de questions_used (RPC en Postgres, ver
-    // supabase/schema.sql) para no pisarse si el usuario dispara
-    // preguntas en paralelo.
-    const { data: usageRows, error: usageError } = await supabase.rpc(
-      'increment_questions_used',
-      { p_user_id: userId }
-    );
-
-    if (usageError) throw usageError;
-    // El aviso de "cerca del límite" no se manda por correo: se calcula
-    // en vivo en el dashboard de /admin (ver app/admin/page.tsx).
-    const usage = (usageRows as IncrementResult[] | null)?.[0];
 
     return NextResponse.json({
-      correct: isCorrect,
-      correctIndex: question.correct_index,
-      explanation: question.explanation,
-      questionsUsed: usage?.questions_used ?? null,
-      questionsLimit: usage?.questions_limit ?? null,
+      correct: result.is_correct,
+      correctIndex: result.correct_index,
+      explanation: result.explanation,
+      questionsUsed: result.questions_used,
+      questionsLimit: result.questions_limit,
     });
   } catch (e) {
     return handleApiError(e);

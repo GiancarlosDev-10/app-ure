@@ -29,6 +29,10 @@ export const createContentSchema = z.object({
   assignedTo: z.string().uuid('Usuario inválido'),
 });
 
+export const updateContentSchema = z.object({
+  active: z.boolean(),
+});
+
 export const generateQuestionSchema = z.object({
   contentId: z.string().uuid('Contenido inválido'),
   difficulty: z.enum(['basico', 'intermedio', 'avanzado']),

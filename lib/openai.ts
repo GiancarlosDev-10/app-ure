@@ -57,6 +57,7 @@ export async function generateQuestion(
   }
 
   const context = pickContextWindow(markdown);
+  const hasPageMarkers = /\[página \d+\]/i.test(context);
 
   const completion = await client.chat.completions.create({
     model,
@@ -119,6 +120,22 @@ export async function generateQuestion(
     question: result.data.question,
     options: result.data.options as [string, string, string, string],
     correctIndex: result.data.correctIndex,
-    explanation: result.data.explanation,
+    explanation: stripHallucinatedPageCitation(result.data.explanation, hasPageMarkers),
   };
+}
+
+/**
+ * Defensa contra alucinaciones: el prompt le pide al modelo que no cite
+ * página si el material no tenía marcadores, pero un LLM no garantiza
+ * seguir esa instrucción el 100% de las veces. Acá se verifica de forma
+ * determinística — si el contexto mandado no tenía ningún [página N],
+ * se borra cualquier mención a "página" que la respuesta haya inventado,
+ * sin importar qué haya hecho el modelo.
+ */
+function stripHallucinatedPageCitation(explanation: string, hasPageMarkers: boolean): string {
+  if (hasPageMarkers) return explanation;
+  return explanation
+    .replace(/\s*fuente:\s*p[aá]gina\s*\d+\.?/gi, '')
+    .replace(/\s*p[aá]gina\s*\d+\.?/gi, '')
+    .trim();
 }

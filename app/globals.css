@@ -40,7 +40,7 @@ a {
   justify-content: center;
 }
 
-.center-screen > .card {
+.center-screen > div {
   width: 100%;
 }
 

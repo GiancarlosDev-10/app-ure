@@ -150,6 +150,69 @@ end;
 $$ language plpgsql;
 
 -- ------------------------------------------------------------
+-- Función: submit_answer
+-- Junta en una sola llamada (antes eran 3 round-trips secuenciales:
+-- buscar la pregunta, guardar la respuesta, incrementar el contador) la
+-- validación de dueño/no-respondida + la corrección + el incremento de
+-- questions_used. FOR UPDATE bloquea la fila mientras dura la función
+-- para que un doble submit simultáneo de la misma pregunta no cuente
+-- dos veces.
+-- ------------------------------------------------------------
+create or replace function public.submit_answer(
+  p_question_id uuid,
+  p_user_id uuid,
+  p_selected_index int
+) returns table (
+  correct_index    integer,
+  explanation      text,
+  is_correct       boolean,
+  questions_used   integer,
+  questions_limit  integer
+) as $$
+declare
+  v_correct_index integer;
+  v_explanation   text;
+  v_owner         uuid;
+  v_answered_at   timestamptz;
+  v_is_correct    boolean;
+begin
+  select qq.correct_index, qq.explanation, qq.user_id, qq.answered_at
+  into v_correct_index, v_explanation, v_owner, v_answered_at
+  from public.quiz_questions qq
+  where qq.id = p_question_id
+  for update;
+
+  if v_owner is null then
+    raise exception 'question_not_found';
+  end if;
+  if v_owner <> p_user_id then
+    raise exception 'question_not_owned';
+  end if;
+  if v_answered_at is not null then
+    raise exception 'already_answered';
+  end if;
+
+  v_is_correct := (p_selected_index = v_correct_index);
+
+  update public.quiz_questions
+  set user_answer_index = p_selected_index,
+      is_correct = v_is_correct,
+      answered_at = now()
+  where id = p_question_id;
+
+  update public.users
+  set questions_used = users.questions_used + 1
+  where id = p_user_id;
+
+  return query
+    select v_correct_index, v_explanation, v_is_correct,
+           u.questions_used, u.questions_limit
+    from public.users u
+    where u.id = p_user_id;
+end;
+$$ language plpgsql;
+
+-- ------------------------------------------------------------
 -- Función: complete_login
 -- Junta en una sola llamada (un solo round-trip de red) las 3 escrituras
 -- que pasan justo después de validar la contraseña: registrar el intento

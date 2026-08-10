@@ -21,14 +21,23 @@ export async function POST(req: Request) {
     const supabase = getSupabaseAdmin();
 
     // Defensa extra además del middleware/JWT: releer el estado real de
-    // la cuenta (activo, vencimiento, cupo) justo antes de gastar una
-    // llamada a OpenAI.
-    const { data: userRow, error: userError } = await supabase
-      .from('users')
-      .select('active, expiration_date, questions_used, questions_limit')
-      .eq('id', userId)
-      .single();
+    // la cuenta (activo, vencimiento, cupo) y del contenido justo antes
+    // de gastar una llamada a OpenAI. Las dos consultas no dependen
+    // entre sí, así que van en paralelo en vez de una tras otra.
+    const [userResult, contentResult] = await Promise.all([
+      supabase
+        .from('users')
+        .select('active, expiration_date, questions_used, questions_limit')
+        .eq('id', userId)
+        .single(),
+      supabase
+        .from('study_content')
+        .select('id, markdown, active, assigned_to')
+        .eq('id', parsed.data.contentId)
+        .single(),
+    ]);
 
+    const { data: userRow, error: userError } = userResult;
     if (userError || !userRow) throw new ApiAuthError('Usuario no encontrado.', 404);
 
     const today = new Date().toISOString().slice(0, 10);
@@ -42,12 +51,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { data: content, error: contentError } = await supabase
-      .from('study_content')
-      .select('id, markdown, active, assigned_to')
-      .eq('id', parsed.data.contentId)
-      .single();
-
+    const { data: content, error: contentError } = contentResult;
     if (contentError || !content) {
       throw new ApiAuthError('El contenido no existe.', 404);
     }

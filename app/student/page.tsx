@@ -209,11 +209,6 @@ export default function StudentPage() {
                   {feedback.correct ? '✅ ¡Correcto!' : '❌ No era esa.'}
                 </p>
                 <p className="hint">{feedback.explanation}</p>
-                {feedback.questionsUsed !== null && (
-                  <p className="hint">
-                    Preguntas usadas: {feedback.questionsUsed} / {feedback.questionsLimit}
-                  </p>
-                )}
                 <button type="button" onClick={handleGenerate} disabled={generating}>
                   {generating ? 'Generando…' : 'Siguiente pregunta'}
                 </button>

@@ -70,24 +70,16 @@ export default function AdminContentPage() {
                   <th>Asignado a</th>
                   <th>Estado</th>
                   <th>Creado</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {content.map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.title}</td>
-                    <td>{c.assigned_user?.email ?? '—'}</td>
-                    <td>
-                      <span className={`badge ${c.active ? 'badge-active' : 'badge-inactive'}`}>
-                        {c.active ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </td>
-                    <td>{new Date(c.created_at).toLocaleDateString('es-PE')}</td>
-                  </tr>
+                  <ContentRow key={c.id} content={c} onChanged={loadAll} />
                 ))}
                 {content.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="hint">
+                    <td colSpan={5} className="hint">
                       Todavía no se subió contenido.
                     </td>
                   </tr>
@@ -98,6 +90,79 @@ export default function AdminContentPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function ContentRow({
+  content,
+  onChanged,
+}: {
+  content: AdminContentSummary;
+  onChanged: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function toggleActive() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/content/${content.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: !content.active }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'No se pudo actualizar.');
+      onChanged();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error inesperado.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDelete() {
+    const confirmed = window.confirm(
+      `¿Borrar "${content.title}" definitivamente? Esto también borra las preguntas ya generadas a partir de este contenido. No se puede deshacer.`
+    );
+    if (!confirmed) return;
+
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/content/${content.id}`, { method: 'DELETE' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? 'No se pudo borrar.');
+      onChanged();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error inesperado.');
+      setBusy(false);
+    }
+  }
+
+  return (
+    <tr>
+      <td>{content.title}</td>
+      <td>{content.assigned_user?.email ?? '—'}</td>
+      <td>
+        <span className={`badge ${content.active ? 'badge-active' : 'badge-inactive'}`}>
+          {content.active ? 'Activo' : 'Inactivo'}
+        </span>
+      </td>
+      <td>{new Date(content.created_at).toLocaleDateString('es-PE')}</td>
+      <td>
+        <div className="toolbar">
+          <button type="button" className="btn-secondary" disabled={busy} onClick={toggleActive}>
+            {content.active ? 'Desactivar' : 'Activar'}
+          </button>
+          <button type="button" className="btn-secondary" disabled={busy} onClick={handleDelete}>
+            Borrar
+          </button>
+        </div>
+        {error && <p className="error">{error}</p>}
+      </td>
+    </tr>
   );
 }
 
