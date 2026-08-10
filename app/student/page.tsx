@@ -150,11 +150,11 @@ export default function StudentPage() {
             >
               <strong>Cómo funciona:</strong>
               <br />
-              1️⃣ Elegí la dificultad.
+              1️⃣ Elige la dificultad.
               <br />
-              2️⃣ Generá una pregunta.
+              2️⃣ Genera una pregunta.
               <br />
-              3️⃣ Respondé y leé la explicación.
+              3️⃣ Responde y lee la explicación.
             </div>
 
             <p className="hint" style={{ marginTop: '1rem' }}>
