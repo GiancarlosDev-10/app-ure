@@ -63,6 +63,14 @@ export default function StudentPage() {
     })();
   }, []);
 
+  function handleBackToSelection() {
+    // "Siguiente pregunta" ya no dispara otra generación al toque: te
+    // deja elegir la dificultad de nuevo antes de gastar la llamada.
+    setQuestion(null);
+    setFeedback(null);
+    setSelectedOption(null);
+  }
+
   async function handleGenerate() {
     setGenerating(true);
     setError(null);
@@ -126,14 +134,29 @@ export default function StudentPage() {
 
         {!loadingContent && contentList.length > 0 && !question && (
           <>
-            <label htmlFor="content">Material</label>
-            <select id="content" value={contentId} onChange={(e) => setContentId(e.target.value)}>
-              {contentList.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.title}
-                </option>
-              ))}
-            </select>
+            <div
+              style={{
+                marginTop: '1.25rem',
+                padding: '0.85rem 1rem',
+                borderRadius: '10px',
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid #232c46',
+                fontSize: '0.8rem',
+                lineHeight: 1.6,
+              }}
+            >
+              <strong>Cómo funciona:</strong>
+              <br />
+              1️⃣ Elegí la dificultad.
+              <br />
+              2️⃣ Generá una pregunta.
+              <br />
+              3️⃣ Respondé y leé la explicación.
+            </div>
+
+            <p className="hint" style={{ marginTop: '1rem' }}>
+              Material: {contentList[0].title}
+            </p>
 
             <label htmlFor="difficulty">Dificultad</label>
             <select
@@ -209,8 +232,8 @@ export default function StudentPage() {
                   {feedback.correct ? '✅ ¡Correcto!' : '❌ No era esa.'}
                 </p>
                 <p className="hint">{feedback.explanation}</p>
-                <button type="button" onClick={handleGenerate} disabled={generating}>
-                  {generating ? 'Generando…' : 'Siguiente pregunta'}
+                <button type="button" onClick={handleBackToSelection}>
+                  Elegir dificultad
                 </button>
               </div>
             )}

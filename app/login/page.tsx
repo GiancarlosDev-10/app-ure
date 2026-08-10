@@ -66,7 +66,7 @@ function LoginForm() {
       <div>
         <div className="brand-header">
           <Logo size={72} />
-          <h1 style={{ fontFamily: 'inherit' }}>Bienvenido</h1>
+          <h1>Bienvenido</h1>
         </div>
         <form onSubmit={handleSubmit}>
           <label htmlFor="email">Correo</label>

@@ -1,15 +1,13 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { JetBrains_Mono } from 'next/font/google';
 import { Providers } from '@/components/providers';
 import { SessionGuard } from '@/components/session-guard';
 import './globals.css';
 
-// Inter: la sans-serif del mockup de referencia (portal DIGPE) — se usa
-// solo en los h1 (ver globals.css). JetBrains Mono: la monoespaciada
-// tipo "dev tool" para el resto del cuerpo. Las dos self-hosted por
-// Next.js, sin request externo en cada visita.
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+// Una sola tipografía para toda la app (títulos incluidos) — monoespaciada
+// tipo "dev tool", self-hosted por Next.js, sin request externo en cada
+// visita.
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-mono',
@@ -40,7 +38,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es">
-      <body className={`${inter.variable} ${jetbrainsMono.variable}`}>
+      <body className={jetbrainsMono.variable}>
         <Providers>
           <SessionGuard />
           {children}
