@@ -64,11 +64,11 @@ function LoginForm() {
   }
 
   return (
-    <main className="container center-screen themeable" style={{ position: 'relative' }}>
-      <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
-        <ThemeToggle />
-      </div>
+    <main className="container center-screen themeable">
       <div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
+          <ThemeToggle />
+        </div>
         <div className="brand-header">
           <Logo size={72} />
           <h1>
