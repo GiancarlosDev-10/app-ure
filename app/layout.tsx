@@ -39,6 +39,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es">
       <body className={jetbrainsMono.variable}>
+        {/* Aplica el tema guardado ANTES de que React hidrate, para que
+            no haya un flash del tema oscuro por defecto en /login o
+            /student si el usuario ya había elegido claro. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{if(localStorage.getItem('app-ure-theme')==='light'){document.documentElement.setAttribute('data-theme','light')}}catch(e){}",
+          }}
+        />
         <Providers>
           <SessionGuard />
           {children}

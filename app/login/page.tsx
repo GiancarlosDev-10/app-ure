@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Logo } from '@/components/logo';
 import { EyeIcon, EyeOffIcon } from '@/components/icons';
 import { TypewriterText } from '@/components/typewriter-text';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 const URL_ERROR_MESSAGES: Record<string, string> = {
   'session-invalidated':
@@ -63,7 +64,10 @@ function LoginForm() {
   }
 
   return (
-    <main className="container center-screen">
+    <main className="container center-screen themeable" style={{ position: 'relative' }}>
+      <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+        <ThemeToggle />
+      </div>
       <div>
         <div className="brand-header">
           <Logo size={72} />

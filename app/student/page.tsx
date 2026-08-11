@@ -117,9 +117,9 @@ export default function StudentPage() {
   }
 
   return (
-    <main className="container">
+    <main className="container themeable">
       <div>
-        <PageHeader email={session?.user?.email} />
+        <PageHeader email={session?.user?.email} showThemeToggle />
         <div className="brand-header">
           <Logo size={56} />
           <h1>
@@ -142,8 +142,8 @@ export default function StudentPage() {
                 marginTop: '1.25rem',
                 padding: '0.85rem 1rem',
                 borderRadius: '10px',
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid #232c46',
+                background: 'var(--t-panel-bg)',
+                border: '1px solid var(--t-panel-border)',
                 fontSize: '0.8rem',
                 lineHeight: 1.6,
               }}
@@ -202,15 +202,19 @@ export default function StudentPage() {
                       marginTop: 0,
                       textAlign: 'left',
                       fontWeight: 400,
-                      color: '#f2f4f8',
+                      // Las opciones correcta/incorrecta se resaltan con un
+                      // fondo saturado en los dos temas, así que el texto
+                      // blanco siempre contrasta bien ahí. Sin resaltar,
+                      // el texto sigue el color del tema activo.
+                      color: isCorrectOption || isWrongPick ? '#f2f4f8' : 'var(--t-text)',
                       background: isCorrectOption
-                        ? '#16532e'
+                        ? 'var(--t-correct-bg)'
                         : isWrongPick
-                          ? '#5a1e1e'
+                          ? 'var(--t-wrong-bg)'
                           : isSelected
-                            ? 'var(--accent-soft)'
-                            : '#0e1425',
-                      border: isSelected ? '1px solid var(--accent)' : '1px solid #2c3757',
+                            ? 'var(--t-option-selected-bg)'
+                            : 'var(--t-option-bg)',
+                      border: isSelected ? '1px solid var(--accent)' : '1px solid var(--t-border)',
                     }}
                   >
                     {opt}
@@ -231,7 +235,12 @@ export default function StudentPage() {
 
             {feedback && (
               <div style={{ marginTop: '1rem' }}>
-                <p style={{ color: feedback.correct ? '#4ade80' : '#f87171', fontWeight: 600 }}>
+                <p
+                  style={{
+                    color: feedback.correct ? 'var(--t-success)' : 'var(--t-danger)',
+                    fontWeight: 600,
+                  }}
+                >
                   {feedback.correct ? '✅ ¡Correcto!' : '❌ No era esa.'}
                 </p>
                 <p className="hint">{feedback.explanation}</p>

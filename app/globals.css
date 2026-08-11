@@ -12,6 +12,78 @@
   box-sizing: border-box;
 }
 
+/* ============================================================
+   Tema claro/oscuro — alcance limitado a .themeable (login y
+   /student). El panel de admin no usa esta clase, así que
+   [data-theme='light'] no le afecta nada: sigue fijo en oscuro.
+   ============================================================ */
+.themeable {
+  --t-bg: #0b1020;
+  --t-surface: #0e1425;
+  --t-border: #2c3757;
+  --t-text: #f2f4f8;
+  --t-icon-color: #cbd3e8;
+  --t-panel-bg: rgba(255, 255, 255, 0.03);
+  --t-panel-border: #232c46;
+  --t-option-bg: #0e1425;
+  --t-option-selected-bg: var(--accent-soft);
+  --t-correct-bg: #16532e;
+  --t-wrong-bg: #5a1e1e;
+  --t-success: #4ade80;
+  --t-danger: #f87171;
+
+  min-height: 100dvh;
+  background: var(--t-bg);
+  color: var(--t-text);
+}
+
+[data-theme='light'] .themeable {
+  --t-bg: #f5f6fa;
+  --t-surface: #ffffff;
+  --t-border: #d8dce6;
+  --t-text: #16171c;
+  --t-icon-color: #43485a;
+  --t-panel-bg: #eef0f5;
+  --t-panel-border: #d8dce6;
+  --t-option-bg: #ffffff;
+  --t-option-selected-bg: rgba(201, 162, 39, 0.18);
+  --t-correct-bg: #16a34a;
+  --t-wrong-bg: #dc2626;
+  --t-success: #15803d;
+  --t-danger: #b91c1c;
+}
+
+.themeable input,
+.themeable textarea,
+.themeable select {
+  background: var(--t-surface);
+  border-color: var(--t-border);
+  color: var(--t-text);
+}
+
+.themeable .hint {
+  color: var(--t-text);
+}
+
+.themeable .icon-btn {
+  border-color: var(--t-border);
+  color: var(--t-icon-color);
+}
+
+.themeable .toggle-visibility-btn {
+  color: var(--t-icon-color);
+}
+
+.themeable .badge-demo {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+[data-theme='light'] .themeable .badge-demo {
+  background: rgba(180, 130, 20, 0.16);
+  color: #8a5f10;
+}
+
 body {
   margin: 0;
   font-family: var(--font-mono), ui-monospace, 'JetBrains Mono', 'Fira Code', Consolas, monospace;
