@@ -20,6 +20,25 @@ export function EyeIcon({ size = 18 }: { size?: number }) {
   );
 }
 
+export function ArrowLeftIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </svg>
+  );
+}
+
 export function LogoutIcon({ size = 18 }: { size?: number }) {
   return (
     <svg

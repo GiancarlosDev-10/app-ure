@@ -119,7 +119,11 @@ export default function StudentPage() {
   return (
     <main className="container themeable">
       <div>
-        <PageHeader email={session?.user?.email} showThemeToggle />
+        <PageHeader
+          email={session?.user?.email}
+          showThemeToggle
+          onBack={question ? handleBackToSelection : undefined}
+        />
         <div className="brand-header">
           <Logo size={56} />
           <h1>
@@ -161,7 +165,7 @@ export default function StudentPage() {
               Material: {contentList[0].title}
             </p>
 
-            <label htmlFor="difficulty">Dificultad</label>
+            <label htmlFor="difficulty">Elige la dificultad</label>
             <select
               id="difficulty"
               value={difficulty}
@@ -244,8 +248,8 @@ export default function StudentPage() {
                   {feedback.correct ? '✅ ¡Correcto!' : '❌ No era esa.'}
                 </p>
                 <p className="hint">{feedback.explanation}</p>
-                <button type="button" onClick={handleBackToSelection}>
-                  Elegir dificultad
+                <button type="button" onClick={handleGenerate} disabled={generating}>
+                  {generating ? 'Generando…' : 'Siguiente pregunta'}
                 </button>
               </div>
             )}
