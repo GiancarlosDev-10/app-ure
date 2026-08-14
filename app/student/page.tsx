@@ -11,12 +11,14 @@ import { TypewriterText } from '@/components/typewriter-text';
 // ahí el efecto es una bienvenida (una sola vez por sesión), acá cumple
 // una función real — disimular que la IA tarda unos segundos en pensar
 // la pregunta — así que se repite cada vez que se genera una. Dos líneas
-// animadas en secuencia (la segunda arranca cuando termina la primera),
-// con duración total pensada para cubrir la espera real (~3s).
+// animadas en secuencia (la segunda arranca cuando termina la primera).
+// A propósito el total (~1.8s) queda MENOR a la espera real (~2.7-3.3s):
+// así "¡Prepárate!" termina de tipearse y se queda quieto, legible, en
+// vez de cortarse recién al terminar justo cuando llega la respuesta.
 const LOADING_LINE_1 = 'Cargando pregunta...';
 const LOADING_LINE_2 = '¡Prepárate!';
-const LOADING_LINE_1_SECONDS = 1.6;
-const LOADING_LINE_2_SECONDS = 1.2;
+const LOADING_LINE_1_SECONDS = 1.0;
+const LOADING_LINE_2_SECONDS = 0.8;
 
 interface ContentOption {
   id: string;
@@ -152,7 +154,7 @@ export default function StudentPage() {
                   {LOADING_LINE_1}
                 </span>
               </div>
-              <div>
+              <div style={{ marginTop: '0.9rem' }}>
                 <span
                   className="typewriter"
                   style={
