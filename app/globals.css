@@ -116,9 +116,13 @@ body {
   vertical-align: bottom;
   border-right: 0.12em solid var(--accent);
   width: 0;
+  /* --tw-duration y --tw-delay permiten encadenar varias líneas: la
+     segunda espera (--tw-delay) a que termine la primera. Sin esas
+     variables, se comporta como siempre (0.9s, sin espera). */
   animation:
-    typewriter-reveal 0.9s steps(var(--tw-chars, 10), end) forwards,
-    typewriter-caret 0.7s step-end 4;
+    typewriter-reveal var(--tw-duration, 0.9s) steps(var(--tw-chars, 10), end)
+      var(--tw-delay, 0s) forwards,
+    typewriter-caret 0.7s step-end var(--tw-delay, 0s) 4;
 }
 
 @media (prefers-reduced-motion: reduce) {

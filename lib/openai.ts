@@ -20,22 +20,39 @@ const DIFFICULTY_GUIDE: Record<Difficulty, string> = {
 };
 
 // Tope de caracteres que se mandan como contexto al modelo por llamada.
-// gpt-4o-mini soporta ~128k tokens de contexto (~350-450k caracteres en
-// español); 60.000 cubre documentos largos reales con margen de sobra,
-// sin disparar el costo/latencia por pregunta innecesariamente. Para
-// documentos aun más largos que este tope, ver pickContextWindow abajo.
-const MAX_CONTEXT_CHARS = 60_000;
+// Bajarlo es la palanca principal de velocidad: la latencia de gpt-4o-mini
+// crece con el tamaño del prompt. 20k caracteres (~10-15 páginas de un
+// manual) alcanza de sobra para generar UNA pregunta bien fundamentada.
+const MAX_CONTEXT_CHARS = 20_000;
 
 /**
- * Si el markdown entra completo dentro del tope, se manda entero. Si no,
- * en vez de recortar siempre desde el principio (lo que dejaría el resto
- * del documento sin usar nunca), se toma una ventana de tamaño fijo pero
- * en una posición aleatoria — así, a lo largo de varias preguntas
- * generadas, se termina cubriendo el documento completo en vez de
- * repetir siempre la introducción.
+ * Elige el fragmento del documento que se manda como contexto.
+ *
+ * - Documento corto (<= tope): va entero.
+ * - Documento con marcadores [página N]: se parte por páginas y se toma
+ *   un grupo de páginas contiguas al azar que quepa en el tope. Los
+ *   cortes siempre caen en límites de página (nunca a mitad de una idea)
+ *   y cada fragmento arranca con su marcador — la cita "Fuente: página N"
+ *   sale más confiable porque el marcador relevante está siempre visible.
+ * - Documento largo sin marcadores: ventana de posición aleatoria (el
+ *   comportamiento anterior, como red de seguridad).
  */
 function pickContextWindow(markdown: string): string {
   if (markdown.length <= MAX_CONTEXT_CHARS) return markdown;
+
+  const pageSplits = markdown.split(/(?=\[página \d+\])/i);
+  // split deja lo anterior al primer marcador en [0]; si hay 2+ trozos
+  // reales con marcador, usamos la división por páginas.
+  if (pageSplits.length > 2) {
+    const startIdx = Math.floor(Math.random() * pageSplits.length);
+    let chunk = '';
+    for (let i = startIdx; i < pageSplits.length; i++) {
+      if (chunk.length + pageSplits[i].length > MAX_CONTEXT_CHARS && chunk.length > 0) break;
+      chunk += pageSplits[i];
+    }
+    if (chunk.length > 0) return chunk.slice(0, MAX_CONTEXT_CHARS + 2_000);
+  }
+
   const maxStart = markdown.length - MAX_CONTEXT_CHARS;
   const start = Math.floor(Math.random() * maxStart);
   return markdown.slice(start, start + MAX_CONTEXT_CHARS);
@@ -76,10 +93,11 @@ export async function generateQuestion(
           '"explanation" debe justificar la respuesta correcta citando o parafraseando el material.',
           'La pregunta se redacta como una pregunta de examen normal, directa: nunca menciones "el material",',
           '"el texto", "el documento" ni frases como "según el material de estudio" dentro de "question".',
-          'Si en el material aparecen marcadores de página con el formato exacto [página N], agregá al final',
-          'de "explanation" la línea "Fuente: página N" usando el marcador más cercano ANTES del fragmento',
-          'que usaste para justificar la respuesta. Si el material NO tiene marcadores de página, no inventes',
-          'ningún número ni menciones "página" — nunca falsifiques una fuente que no esté en el texto.',
+          'Si en el material aparecen marcadores de página con el formato exacto [página N], es OBLIGATORIO',
+          'terminar "explanation" con la cita "Fuente: página N" — usá el marcador más cercano ANTES del',
+          'fragmento que justifica la respuesta. Una explicación sin esa cita se considera incompleta.',
+          'Si el material NO tiene marcadores de página, no inventes ningún número ni menciones "página"',
+          '— nunca falsifiques una fuente que no esté en el texto.',
         ].join(' '),
       },
       {

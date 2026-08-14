@@ -10,8 +10,13 @@ import { TypewriterText } from '@/components/typewriter-text';
 // A propósito NO usa el mismo componente que "¡A darle!"/"Bienvenido":
 // ahí el efecto es una bienvenida (una sola vez por sesión), acá cumple
 // una función real — disimular que la IA tarda unos segundos en pensar
-// la pregunta — así que se repite cada vez que se genera una.
-const LOADING_PHRASE = 'Cargando pregunta... ¡Prepárate!';
+// la pregunta — así que se repite cada vez que se genera una. Dos líneas
+// animadas en secuencia (la segunda arranca cuando termina la primera),
+// con duración total pensada para cubrir la espera real (~3s).
+const LOADING_LINE_1 = 'Cargando pregunta...';
+const LOADING_LINE_2 = '¡Prepárate!';
+const LOADING_LINE_1_SECONDS = 1.6;
+const LOADING_LINE_2_SECONDS = 1.2;
 
 interface ContentOption {
   id: string;
@@ -133,14 +138,35 @@ export default function StudentPage() {
         <div className="brand-header">
           <Logo size={56} />
           {generating ? (
-            <p style={{ fontWeight: 600, fontSize: '1.05rem', marginTop: '0.75rem' }}>
-              <span
-                className="typewriter"
-                style={{ '--tw-chars': LOADING_PHRASE.length } as CSSProperties}
-              >
-                {LOADING_PHRASE}
-              </span>
-            </p>
+            <div style={{ fontWeight: 700, fontSize: '1.5rem', marginTop: '1.25rem', lineHeight: 1.5 }}>
+              <div>
+                <span
+                  className="typewriter"
+                  style={
+                    {
+                      '--tw-chars': LOADING_LINE_1.length,
+                      '--tw-duration': `${LOADING_LINE_1_SECONDS}s`,
+                    } as CSSProperties
+                  }
+                >
+                  {LOADING_LINE_1}
+                </span>
+              </div>
+              <div>
+                <span
+                  className="typewriter"
+                  style={
+                    {
+                      '--tw-chars': LOADING_LINE_2.length,
+                      '--tw-duration': `${LOADING_LINE_2_SECONDS}s`,
+                      '--tw-delay': `${LOADING_LINE_1_SECONDS}s`,
+                    } as CSSProperties
+                  }
+                >
+                  {LOADING_LINE_2}
+                </span>
+              </div>
+            </div>
           ) : (
             <h1>
               <TypewriterText text="¡A darle!" storageKey="student-adarle" />
