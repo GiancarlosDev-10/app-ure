@@ -13,6 +13,11 @@ export interface UserRow {
   alert_threshold: number;
   current_session_token: string | null;
   current_session_created_at: string | null;
+  // Candado de dispositivo (solo se exige para role: 'paid', ver lib/auth.ts):
+  // se setea con el ID generado en el primer login exitoso y de ahí en más
+  // ningún otro dispositivo puede loguearse con esa cuenta hasta que un
+  // admin lo libere.
+  bound_device_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -54,6 +59,7 @@ export interface AdminUserSummary {
   questions_used: number;
   questions_limit: number;
   alert_threshold: number;
+  bound_device_id: string | null;
   created_at: string;
 }
 

@@ -84,9 +84,9 @@ export async function generateQuestion(
       {
         role: 'system',
         content: [
-          'Sos un generador de preguntas de examen en español.',
-          'Trabajás EXCLUSIVAMENTE con el material que te pasan: nunca inventás datos que no estén ahí.',
-          'Devolvés únicamente un objeto JSON, sin texto adicional, con esta forma exacta:',
+          'Eres un generador de preguntas de examen en español.',
+          'Trabajas EXCLUSIVAMENTE con el material que te pasan: nunca inventas datos que no estén ahí.',
+          'Devuelves únicamente un objeto JSON, sin texto adicional, con esta forma exacta:',
           '{"question": string, "options": [string, string, string, string], "correctIndex": number, "explanation": string}',
           '"correctIndex" es la posición (0 a 3) de la opción correcta dentro de "options".',
           'Las 4 opciones deben ser plausibles y del mismo estilo (nada de "todas las anteriores" ni relleno obvio).',
@@ -94,7 +94,7 @@ export async function generateQuestion(
           'La pregunta se redacta como una pregunta de examen normal, directa: nunca menciones "el material",',
           '"el texto", "el documento" ni frases como "según el material de estudio" dentro de "question".',
           'Si en el material aparecen marcadores de página con el formato exacto [página N], es OBLIGATORIO',
-          'terminar "explanation" con la cita "Fuente: página N" — usá el marcador más cercano ANTES del',
+          'terminar "explanation" con la cita "Fuente: página N" — usa el marcador más cercano ANTES del',
           'fragmento que justifica la respuesta. Una explicación sin esa cita se considera incompleta.',
           'Si el material NO tiene marcadores de página, no inventes ningún número ni menciones "página"',
           '— nunca falsifiques una fuente que no esté en el texto.',

@@ -199,7 +199,7 @@ function UploadForm({
         setTitle(file.name.replace(/\.(md|markdown|txt)$/i, ''));
       }
     } catch {
-      setError('No se pudo leer el archivo. Probá pegando el contenido directo.');
+      setError('No se pudo leer el archivo. Prueba pegando el contenido directo.');
     }
   }
 

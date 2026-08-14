@@ -180,7 +180,7 @@ export default function StudentPage() {
 
         {!generating && !loadingContent && contentList.length === 0 && (
           <p className="hint">
-            Todavía no tenés material asignado. Pedile al administrador que te asigne uno.
+            Todavía no tienes material asignado. Pídele al administrador que te asigne uno.
           </p>
         )}
 

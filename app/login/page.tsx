@@ -13,6 +13,21 @@ const URL_ERROR_MESSAGES: Record<string, string> = {
     'Tu sesión se cerró porque se inició sesión con esta cuenta en otro dispositivo.',
 };
 
+const DEVICE_ID_KEY = 'app-ure-device-id';
+
+// ID propio (no un identificador real de hardware — el navegador no deja
+// leer eso) que persiste en este dispositivo entre sesiones. Se manda en
+// cada login; el servidor lo usa para el candado de dispositivo de las
+// cuentas de pago (ver lib/auth.ts). No se toca acá si ya existe.
+function getDeviceId(): string {
+  let id = localStorage.getItem(DEVICE_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(DEVICE_ID_KEY, id);
+  }
+  return id;
+}
+
 export default function LoginPage() {
   return (
     <Suspense fallback={null}>
@@ -42,6 +57,7 @@ function LoginForm() {
     const res = await signIn('credentials', {
       email,
       password,
+      deviceId: getDeviceId(),
       redirect: false,
     });
 

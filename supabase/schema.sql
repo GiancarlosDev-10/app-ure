@@ -46,6 +46,11 @@ create table if not exists public.users (
   -- Control de sesión única por cuenta:
   current_session_token       text,
   current_session_created_at  timestamptz,
+  -- Candado de dispositivo (solo se exige para role = 'paid', la lógica
+  -- vive en lib/auth.ts): se completa solo en el primer login exitoso de
+  -- la cuenta y a partir de ahí ningún otro dispositivo puede entrar hasta
+  -- que un admin lo libere (PATCH /api/admin/users/[id] con resetDevice).
+  bound_device_id              text,
   created_at                  timestamptz not null default now(),
   updated_at                  timestamptz not null default now()
 );
@@ -222,10 +227,17 @@ $$ language plpgsql;
 -- cada una paga el cruce de continente, así que juntarlas en una función
 -- de Postgres ahorra ese costo dos veces.
 -- ------------------------------------------------------------
+-- p_device_id: solo se manda (no-null) para cuentas role = 'paid' (ver
+-- lib/auth.ts). Si la cuenta todavía no tiene bound_device_id, se lo
+-- asigna acá (primer login = queda vinculada); si ya tenía uno, ya se
+-- validó en authorize() que coincide, así que el coalesce no cambia nada.
+drop function if exists public.complete_login(uuid, text, text);
+
 create or replace function public.complete_login(
   p_user_id uuid,
   p_identifier text,
-  p_session_token text
+  p_session_token text,
+  p_device_id text default null
 ) returns void as $$
 begin
   insert into public.login_attempts (identifier, success)
@@ -236,7 +248,8 @@ begin
 
   update public.users
   set current_session_token = p_session_token,
-      current_session_created_at = now()
+      current_session_created_at = now(),
+      bound_device_id = coalesce(bound_device_id, p_device_id)
   where id = p_user_id;
 end;
 $$ language plpgsql;

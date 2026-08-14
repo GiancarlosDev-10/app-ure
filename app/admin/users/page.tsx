@@ -252,6 +252,26 @@ function UserRow({ user, onUpdated }: { user: AdminUserSummary; onUpdated: () =>
     }
   }
 
+  async function resetDevice() {
+    if (!window.confirm('¿Liberar el dispositivo vinculado a esta cuenta? El próximo celular que inicie sesión quedará como el nuevo dueño.')) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resetDevice: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'No se pudo liberar el dispositivo.');
+      onUpdated();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error inesperado.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <>
       <tr>
@@ -286,7 +306,23 @@ function UserRow({ user, onUpdated }: { user: AdminUserSummary; onUpdated: () =>
             >
               {user.active ? 'Desactivar' : 'Activar'}
             </button>
+            {user.role === 'paid' && user.bound_device_id && (
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={saving}
+                onClick={resetDevice}
+                title="El próximo dispositivo que inicie sesión con esta cuenta queda vinculado."
+              >
+                Liberar dispositivo
+              </button>
+            )}
           </div>
+          {user.role === 'paid' && (
+            <p className="hint" style={{ marginTop: '0.4rem' }}>
+              {user.bound_device_id ? '🔒 Dispositivo vinculado' : 'Sin vincular aún'}
+            </p>
+          )}
         </td>
       </tr>
       {editing && (

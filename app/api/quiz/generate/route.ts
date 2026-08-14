@@ -46,7 +46,7 @@ export async function POST(req: Request) {
     }
     if (userRow.questions_used >= userRow.questions_limit) {
       throw new ApiAuthError(
-        `Llegaste al límite de ${userRow.questions_limit} preguntas. Contactá al administrador.`,
+        `Llegaste al límite de ${userRow.questions_limit} preguntas. Contacta al administrador.`,
         403
       );
     }

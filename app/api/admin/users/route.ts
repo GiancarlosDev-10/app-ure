@@ -5,7 +5,7 @@ import { hashPassword } from '@/lib/password';
 import { createUserSchema } from '@/lib/schemas';
 
 const LIST_COLUMNS =
-  'id, email, role, active, expiration_date, questions_used, questions_limit, alert_threshold, created_at';
+  'id, email, role, active, expiration_date, questions_used, questions_limit, alert_threshold, bound_device_id, created_at';
 
 export async function GET() {
   try {

@@ -20,6 +20,10 @@ export const updateUserSchema = z
     expirationDate: dateStr.optional(),
     questionsLimit: z.number().int().positive().optional(),
     password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').optional(),
+    // Libera el candado de dispositivo (cuentas 'paid', ver lib/auth.ts)
+    // para que la cuenta pueda vincularse de nuevo en el próximo login,
+    // ej. cuando el usuario cambió de celular.
+    resetDevice: z.literal(true).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: 'Nada para actualizar.' });
 
