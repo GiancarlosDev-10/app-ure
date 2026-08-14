@@ -1,11 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useSession } from 'next-auth/react';
 import type { Difficulty } from '@/types';
 import { Logo } from '@/components/logo';
 import { PageHeader } from '@/components/page-header';
 import { TypewriterText } from '@/components/typewriter-text';
+
+// A propósito NO usa el mismo componente que "¡A darle!"/"Bienvenido":
+// ahí el efecto es una bienvenida (una sola vez por sesión), acá cumple
+// una función real — disimular que la IA tarda unos segundos en pensar
+// la pregunta — así que se repite cada vez que se genera una.
+const LOADING_PHRASE = 'Cargando pregunta... ¡Prepárate!';
 
 interface ContentOption {
   id: string;
@@ -126,20 +132,31 @@ export default function StudentPage() {
         />
         <div className="brand-header">
           <Logo size={56} />
-          <h1>
-            <TypewriterText text="¡A darle!" storageKey="student-adarle" />
-          </h1>
+          {generating ? (
+            <p style={{ fontWeight: 600, fontSize: '1.05rem', marginTop: '0.75rem' }}>
+              <span
+                className="typewriter"
+                style={{ '--tw-chars': LOADING_PHRASE.length } as CSSProperties}
+              >
+                {LOADING_PHRASE}
+              </span>
+            </p>
+          ) : (
+            <h1>
+              <TypewriterText text="¡A darle!" storageKey="student-adarle" />
+            </h1>
+          )}
         </div>
 
-        {loadingContent && <p className="hint">Cargando tu contenido…</p>}
+        {!generating && loadingContent && <p className="hint">Cargando tu contenido…</p>}
 
-        {!loadingContent && contentList.length === 0 && (
+        {!generating && !loadingContent && contentList.length === 0 && (
           <p className="hint">
             Todavía no tenés material asignado. Pedile al administrador que te asigne uno.
           </p>
         )}
 
-        {!loadingContent && contentList.length > 0 && !question && (
+        {!generating && !loadingContent && contentList.length > 0 && !question && (
           <>
             <div
               style={{
