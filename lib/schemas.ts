@@ -25,7 +25,13 @@ export const updateUserSchema = z
 
 export const createContentSchema = z.object({
   title: z.string().trim().min(1, 'El título es obligatorio').max(200),
-  markdown: z.string().trim().min(1, 'El contenido markdown es obligatorio').max(200_000),
+  // 1.000.000 de caracteres ≈ 500 páginas a la densidad típica de un
+  // manual (~2.000 caracteres/página). Postgres no tiene un límite real
+  // acá (columna `text`), y como el contexto que se manda a OpenAI ya se
+  // recorta por páginas (ver lib/openai.ts), un documento grande no
+  // encarece ni enlentece nada — este tope es solo para frenar un
+  // archivo pegado por error, no una limitación real del sistema.
+  markdown: z.string().trim().min(1, 'El contenido markdown es obligatorio').max(1_000_000),
   assignedTo: z.string().uuid('Usuario inválido'),
 });
 

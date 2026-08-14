@@ -282,8 +282,8 @@ function UploadForm({
         placeholder="# Tema&#10;&#10;Contenido del material ya convertido a markdown… (o cargalo desde un archivo arriba)"
       />
       <p className="hint">
-        {markdown.length.toLocaleString('es-PE')} / 200.000 caracteres
-        {markdown.length > 200_000 && ' — supera el máximo permitido'}
+        {markdown.length.toLocaleString('es-PE')} / 1.000.000 caracteres
+        {markdown.length > 1_000_000 && ' — supera el máximo permitido'}
       </p>
 
       <button type="submit" disabled={saving}>
