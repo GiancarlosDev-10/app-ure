@@ -10,13 +10,40 @@ const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 // si se intenta generar una pregunta sin la key configurada.
 const client = new OpenAI({ apiKey: apiKey || 'missing' });
 
+// Antes esto era una sola frase descriptiva por nivel ("preguntas de
+// análisis, comparación o síntesis...") y en la práctica "avanzado" no se
+// distinguía de "intermedio": el modelo no tenía ninguna regla concreta
+// ni ejemplo que lo obligara a subir la exigencia, solo una descripción
+// vaga. Ahora cada nivel trae una regla verificable (cuántas partes del
+// material tiene que combinar la respuesta) más un ejemplo ilustrativo
+// de la ESTRUCTURA esperada (no del contenido — son genéricos a propósito
+// para no filtrarse en la pregunta real).
 const DIFFICULTY_GUIDE: Record<Difficulty, string> = {
   basico:
-    'Preguntas directas sobre definiciones, datos y conceptos explícitos que aparecen tal cual en el material.',
+    'La respuesta correcta debe poder señalarse citando UNA sola frase casi textual del material. ' +
+    'Prohibido pedir relacionar dos conceptos distintos o inferir algo que no esté dicho explícitamente. ' +
+    'Ejemplo de estructura (no de contenido): "¿Qué año se fundó la institución?" — un dato aislado y explícito.',
   intermedio:
-    'Preguntas que exigen relacionar dos o más ideas del material, o aplicar un concepto a un caso simple.',
+    'La pregunta debe obligar a conectar EXACTAMENTE dos ideas, datos o pasos distintos del material ' +
+    '(causa-efecto, comparación simple, o aplicar una definición a una situación breve). ' +
+    'Si se puede responder citando una sola frase aislada, está mal clasificada como intermedia. ' +
+    'Ejemplo de estructura: "¿Por qué la medida X reduce el riesgo Y descrito antes?" — conecta una causa con un efecto de dos partes distintas.',
   avanzado:
-    'Preguntas de análisis, comparación o síntesis: requieren entender el material en profundidad, no solo memorizarlo.',
+    'La pregunta debe exigir analizar, comparar o sintetizar información que aparece en AL MENOS TRES partes ' +
+    'distintas del material, o evaluar una consecuencia que el material no dice literal sino que se deduce de ' +
+    'combinar varias ideas. Prohibido que la respuesta sea un dato aislado o un solo paso de una lista — si se ' +
+    'puede responder citando una sola frase, está mal clasificada como avanzada. ' +
+    'Ejemplo de estructura: dado que el material describe los procedimientos A, B y C, "¿qué pasaría si se aplica A sin haber completado B?" — combina varios procedimientos para deducir algo no dicho literalmente.',
+};
+
+// Antes la temperatura era fija (0.7) para los tres niveles. Básico se
+// beneficia de menos "creatividad" (recall literal, más determinístico);
+// avanzado se beneficia de más variación para que de verdad combine y no
+// se quede pegado al fragmento más obvio del contexto.
+const DIFFICULTY_TEMPERATURE: Record<Difficulty, number> = {
+  basico: 0.3,
+  intermedio: 0.6,
+  avanzado: 0.85,
 };
 
 // Tope de caracteres que se mandan como contexto al modelo por llamada.
@@ -78,7 +105,7 @@ export async function generateQuestion(
 
   const completion = await client.chat.completions.create({
     model,
-    temperature: 0.7,
+    temperature: DIFFICULTY_TEMPERATURE[difficulty],
     response_format: { type: 'json_object' },
     messages: [
       {
@@ -98,6 +125,11 @@ export async function generateQuestion(
           'fragmento que justifica la respuesta. Una explicación sin esa cita se considera incompleta.',
           'Si el material NO tiene marcadores de página, no inventes ningún número ni menciones "página"',
           '— nunca falsifiques una fuente que no esté en el texto.',
+          'La dificultad tiene que venir de CUÁNTAS partes del material hay que combinar para responder,',
+          'nunca de la redacción: no disfraces una pregunta simple con vocabulario rebuscado, doble negación',
+          'o frases enredadas para que "parezca" más difícil. El enunciado debe ser claro y directo en',
+          'cualquier nivel — lo que cambia entre niveles es cuánto razonamiento exige la RESPUESTA, no',
+          'cuánto cuesta entender la PREGUNTA.',
         ].join(' '),
       },
       {
