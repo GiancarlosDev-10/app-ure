@@ -71,6 +71,8 @@ export async function POST(req: Request) {
         options: generated.options,
         correct_index: generated.correctIndex,
         explanation: generated.explanation,
+        prompt_tokens: generated.promptTokens,
+        completion_tokens: generated.completionTokens,
       })
       .select('id, question, options')
       .single();

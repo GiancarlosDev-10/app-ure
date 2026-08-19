@@ -45,6 +45,8 @@ export interface QuizQuestionRow {
   user_answer_index: number | null;
   is_correct: boolean | null;
   answered_at: string | null;
+  prompt_tokens: number | null;
+  completion_tokens: number | null;
   created_at: string;
 }
 

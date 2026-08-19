@@ -68,7 +68,7 @@ const generatedQuestionSchema = z.object({
 export async function generateQuestion(
   markdown: string,
   difficulty: Difficulty
-): Promise<GeneratedQuestion> {
+): Promise<GeneratedQuestion & { promptTokens: number | null; completionTokens: number | null }> {
   if (!apiKey) {
     throw new Error('Falta configurar OPENAI_API_KEY en el servidor.');
   }
@@ -139,6 +139,8 @@ export async function generateQuestion(
     options: result.data.options as [string, string, string, string],
     correctIndex: result.data.correctIndex,
     explanation: stripHallucinatedPageCitation(result.data.explanation, hasPageMarkers),
+    promptTokens: completion.usage?.prompt_tokens ?? null,
+    completionTokens: completion.usage?.completion_tokens ?? null,
   };
 }
 

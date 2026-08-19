@@ -94,6 +94,12 @@ create table if not exists public.quiz_questions (
   user_answer_index integer,
   is_correct      boolean,
   answered_at     timestamptz,
+  -- Tokens reales que devolvió OpenAI para esta generación (completion.usage).
+  -- Quedan NULL en preguntas generadas antes de que se empezara a trackear
+  -- esto — el costo acumulado del panel admin arranca desde ahí, no
+  -- inventa el gasto histórico (ver lib/openaiCost.ts).
+  prompt_tokens     integer,
+  completion_tokens integer,
   created_at      timestamptz not null default now()
 );
 

@@ -4,6 +4,11 @@ import { authOptions } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { PageHeader } from '@/components/page-header';
 import { Logo } from '@/components/logo';
+import {
+  estimateCostUsd,
+  HISTORICAL_COST_USD_BASELINE,
+  TRACKING_STARTED_AT,
+} from '@/lib/openaiCost';
 
 interface UsageAlertRow {
   id: string;
@@ -28,12 +33,42 @@ async function getUsersNearLimit(): Promise<UsageAlertRow[]> {
   return data.filter((u) => u.questions_used >= u.alert_threshold);
 }
 
+interface UsageStats {
+  totalQuestions: number;
+  estimatedCostUsd: number;
+}
+
+async function getUsageStats(): Promise<UsageStats> {
+  const supabase = getSupabaseAdmin();
+  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+
+  // Cuenta total y tokens no dependen entre sí: van en paralelo.
+  const [{ count }, { data: tokenRows }] = await Promise.all([
+    supabase.from('quiz_questions').select('id', { count: 'exact', head: true }),
+    supabase.from('quiz_questions').select('prompt_tokens, completion_tokens'),
+  ]);
+
+  // El costo por pregunta varía según el tamaño del contexto que le tocó
+  // (documentos grandes vs chicos), por eso se suma tokens reales fila
+  // por fila en vez de multiplicar por un promedio fijo.
+  const trackedCost = (tokenRows ?? []).reduce(
+    (sum, row) => sum + estimateCostUsd(model, row.prompt_tokens, row.completion_tokens),
+    0
+  );
+
+  return {
+    totalQuestions: count ?? 0,
+    estimatedCostUsd: HISTORICAL_COST_USD_BASELINE + trackedCost,
+  };
+}
+
 export default async function AdminPage() {
-  // Las dos consultas no dependen entre sí: se disparan en paralelo en
-  // vez de una tras otra (cada una cruza a Supabase en otra región).
-  const [session, usersNearLimit] = await Promise.all([
+  // Las consultas no dependen entre sí: se disparan en paralelo en vez de
+  // una tras otra (cada una cruza a Supabase en otra región).
+  const [session, usersNearLimit, usageStats] = await Promise.all([
     getServerSession(authOptions),
     getUsersNearLimit(),
+    getUsageStats(),
   ]);
 
   return (
@@ -49,6 +84,40 @@ export default async function AdminPage() {
           <Link href="/admin/content">📄 Contenido</Link>
           <Link href="/admin/users">👤 Usuarios</Link>
         </nav>
+
+        <div
+          style={{
+            marginTop: '1.25rem',
+            padding: '1rem',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid #232c46',
+            display: 'flex',
+            gap: '1.5rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div>
+            <p className="hint" style={{ margin: 0 }}>
+              Preguntas generadas (todas las cuentas, incluye demo)
+            </p>
+            <p style={{ margin: '0.2rem 0 0', fontSize: '1.6rem', fontWeight: 700 }}>
+              {usageStats.totalQuestions}
+            </p>
+          </div>
+          <div>
+            <p className="hint" style={{ margin: 0 }}>
+              Costo estimado OpenAI
+            </p>
+            <p style={{ margin: '0.2rem 0 0', fontSize: '1.6rem', fontWeight: 700 }}>
+              ${usageStats.estimatedCostUsd.toFixed(2)}
+            </p>
+            <p className="hint" style={{ margin: '0.2rem 0 0', fontSize: '0.72rem' }}>
+              Incluye ${HISTORICAL_COST_USD_BASELINE.toFixed(2)} gastados antes de trackear
+              tokens (dashboard de OpenAI, base fija) + lo real desde el {TRACKING_STARTED_AT}.
+            </p>
+          </div>
+        </div>
 
         {usersNearLimit.length > 0 && (
           <div
