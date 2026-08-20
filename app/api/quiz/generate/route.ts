@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import { requireRole, handleApiError, ApiAuthError } from '@/lib/apiAuth';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
-import { generateQuestion } from '@/lib/openai';
+import { generateQuestion, normalizeQuestionText } from '@/lib/openai';
 import { generateQuestionSchema } from '@/lib/schemas';
+
+// Cuántas preguntas recientes (de este usuario+contenido) se revisan para
+// no repetir una idéntica. 150 alcanza de sobra para el caso que motivó
+// esto (usuarios con miles de preguntas de límite, pero que en la
+// práctica reportan repetidas mucho antes de llegar ahí).
+const DEDUPE_WINDOW = 150;
+const MAX_RETRIES_ON_DUPLICATE = 2;
 
 export async function POST(req: Request) {
   try {
@@ -22,9 +29,13 @@ export async function POST(req: Request) {
 
     // Defensa extra además del middleware/JWT: releer el estado real de
     // la cuenta (activo, vencimiento, cupo) y del contenido justo antes
-    // de gastar una llamada a OpenAI. Las dos consultas no dependen
-    // entre sí, así que van en paralelo en vez de una tras otra.
-    const [userResult, contentResult] = await Promise.all([
+    // de gastar una llamada a OpenAI. Las tres consultas no dependen
+    // entre sí, así que van en paralelo en vez de una tras otra. La
+    // tercera trae el historial reciente de preguntas de este usuario
+    // para este contenido: su cantidad decide qué ventana de contexto
+    // usar (rotación determinística, ver lib/openai.ts) y sus textos
+    // sirven para detectar una repetida exacta antes de devolverla.
+    const [userResult, contentResult, historyResult] = await Promise.all([
       supabase
         .from('users')
         .select('active, expiration_date, questions_used, questions_limit')
@@ -35,6 +46,13 @@ export async function POST(req: Request) {
         .select('id, markdown, active, assigned_to')
         .eq('id', parsed.data.contentId)
         .single(),
+      supabase
+        .from('quiz_questions')
+        .select('question', { count: 'exact' })
+        .eq('user_id', userId)
+        .eq('content_id', parsed.data.contentId)
+        .order('created_at', { ascending: false })
+        .limit(DEDUPE_WINDOW),
     ]);
 
     const { data: userRow, error: userError } = userResult;
@@ -59,7 +77,26 @@ export async function POST(req: Request) {
       throw new ApiAuthError('Ese contenido no está asignado a tu cuenta.', 403);
     }
 
-    const generated = await generateQuestion(content.markdown, parsed.data.difficulty);
+    const windowSeed = historyResult.count ?? 0;
+    const recentQuestions = new Set(
+      (historyResult.data ?? []).map((q) => normalizeQuestionText(q.question))
+    );
+
+    let generated = await generateQuestion(content.markdown, parsed.data.difficulty, windowSeed);
+    let retries = 0;
+    while (
+      recentQuestions.has(normalizeQuestionText(generated.question)) &&
+      retries < MAX_RETRIES_ON_DUPLICATE
+    ) {
+      retries++;
+      // Salto grande (no solo +1) para caer en una ventana bien distinta,
+      // no la de al lado.
+      generated = await generateQuestion(
+        content.markdown,
+        parsed.data.difficulty,
+        windowSeed + retries * 97
+      );
+    }
 
     const { data: saved, error: saveError } = await supabase
       .from('quiz_questions')

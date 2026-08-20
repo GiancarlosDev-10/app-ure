@@ -40,8 +40,14 @@ const DIFFICULTY_GUIDE: Record<Difficulty, string> = {
 // beneficia de menos "creatividad" (recall literal, más determinístico);
 // avanzado se beneficia de más variación para que de verdad combine y no
 // se quede pegado al fragmento más obvio del contexto.
+// OJO: 0.3 en básico + selección de ventana al azar causó preguntas
+// repetidas exactas en producción (verificado con datos reales). Ahora
+// que pickContextWindow rota en vez de tirar al azar (ver más abajo), el
+// riesgo baja mucho, pero se deja 0.4 en vez de 0.3 como margen extra:
+// menos determinístico, sigue siendo bastante más literal que los otros
+// dos niveles.
 const DIFFICULTY_TEMPERATURE: Record<Difficulty, number> = {
-  basico: 0.3,
+  basico: 0.4,
   intermedio: 0.6,
   avanzado: 0.85,
 };
@@ -57,21 +63,30 @@ const MAX_CONTEXT_CHARS = 20_000;
  *
  * - Documento corto (<= tope): va entero.
  * - Documento con marcadores [página N]: se parte por páginas y se toma
- *   un grupo de páginas contiguas al azar que quepa en el tope. Los
- *   cortes siempre caen en límites de página (nunca a mitad de una idea)
- *   y cada fragmento arranca con su marcador — la cita "Fuente: página N"
- *   sale más confiable porque el marcador relevante está siempre visible.
- * - Documento largo sin marcadores: ventana de posición aleatoria (el
- *   comportamiento anterior, como red de seguridad).
+ *   un grupo de páginas contiguas que quepa en el tope. Los cortes
+ *   siempre caen en límites de página (nunca a mitad de una idea) y cada
+ *   fragmento arranca con su marcador — la cita "Fuente: página N" sale
+ *   más confiable porque el marcador relevante está siempre visible.
+ * - Documento largo sin marcadores: ventana de posición determinística
+ *   por `windowSeed` (red de seguridad para documentos viejos sin páginas).
+ *
+ * ANTES elegía la ventana con Math.random(). Con pocas ventanas posibles
+ * (documentos chicos = pocos "trozos de página"), la probabilidad de que
+ * el azar repita el mismo fragmento en pocas llamadas es alta (paradoja
+ * del cumpleaños) — y un fragmento repetido tiende a producir la misma
+ * pregunta, sobre todo en básico (temperatura baja). Ahora `windowSeed`
+ * (la cantidad de preguntas ya generadas para este usuario+contenido)
+ * rota la ventana de forma determinística: se recorren todas antes de
+ * repetir ninguna, en vez de depender de la suerte.
  */
-function pickContextWindow(markdown: string): string {
+function pickContextWindow(markdown: string, windowSeed: number): string {
   if (markdown.length <= MAX_CONTEXT_CHARS) return markdown;
 
   const pageSplits = markdown.split(/(?=\[página \d+\])/i);
   // split deja lo anterior al primer marcador en [0]; si hay 2+ trozos
   // reales con marcador, usamos la división por páginas.
   if (pageSplits.length > 2) {
-    const startIdx = Math.floor(Math.random() * pageSplits.length);
+    const startIdx = windowSeed % pageSplits.length;
     let chunk = '';
     for (let i = startIdx; i < pageSplits.length; i++) {
       if (chunk.length + pageSplits[i].length > MAX_CONTEXT_CHARS && chunk.length > 0) break;
@@ -81,8 +96,19 @@ function pickContextWindow(markdown: string): string {
   }
 
   const maxStart = markdown.length - MAX_CONTEXT_CHARS;
-  const start = Math.floor(Math.random() * maxStart);
+  // *2654435761 (primo grande, hash multiplicativo de Knuth) para que
+  // seeds consecutivos caigan en puntos bien separados del documento en
+  // vez de ir avanzando de a poquito.
+  const start = (windowSeed * 2654435761) % maxStart;
   return markdown.slice(start, start + MAX_CONTEXT_CHARS);
+}
+
+export function normalizeQuestionText(s: string): string {
+  return s
+    .trim()
+    .toLowerCase()
+    .replace(/[¿?.,!¡]/g, '')
+    .replace(/\s+/g, ' ');
 }
 
 const generatedQuestionSchema = z.object({
@@ -94,13 +120,14 @@ const generatedQuestionSchema = z.object({
 
 export async function generateQuestion(
   markdown: string,
-  difficulty: Difficulty
+  difficulty: Difficulty,
+  windowSeed: number
 ): Promise<GeneratedQuestion & { promptTokens: number | null; completionTokens: number | null }> {
   if (!apiKey) {
     throw new Error('Falta configurar OPENAI_API_KEY en el servidor.');
   }
 
-  const context = pickContextWindow(markdown);
+  const context = pickContextWindow(markdown, windowSeed);
   const hasPageMarkers = /\[página \d+\]/i.test(context);
 
   const completion = await client.chat.completions.create({
