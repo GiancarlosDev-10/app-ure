@@ -206,9 +206,42 @@ export default function StudentPage() {
               3️⃣ Responde y lee la explicación.
             </div>
 
-            <p className="hint" style={{ marginTop: '1rem' }}>
-              Material: {contentList[0].title}
-            </p>
+            {contentList.length === 1 ? (
+              <p className="hint" style={{ marginTop: '1rem' }}>
+                Material: {contentList[0].title}
+              </p>
+            ) : (
+              <>
+                <label>Elige el material</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {contentList.map((c) => {
+                    const isSelected = contentId === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setContentId(c.id)}
+                        style={{
+                          marginTop: 0,
+                          textAlign: 'left',
+                          fontWeight: isSelected ? 700 : 400,
+                          // Fondo dorado (accent) siempre lleva texto oscuro
+                          // (accent-text), igual que el resto de la app —
+                          // texto claro ahí no contrastaría bien.
+                          color: isSelected ? 'var(--accent-text)' : 'var(--t-text)',
+                          background: isSelected ? 'var(--accent)' : 'var(--t-option-bg)',
+                          border: isSelected
+                            ? '1px solid var(--accent)'
+                            : '1px solid var(--t-border)',
+                        }}
+                      >
+                        {c.title}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
 
             <label htmlFor="difficulty">Elige la dificultad</label>
             <select
