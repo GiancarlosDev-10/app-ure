@@ -15,6 +15,7 @@ export const createUserSchema = z.object({
 
 export const updateUserSchema = z
   .object({
+    email: z.string().trim().email('Correo inválido').optional(),
     role: z.enum(['admin', 'demo', 'paid']).optional(),
     active: z.boolean().optional(),
     expirationDate: dateStr.optional(),

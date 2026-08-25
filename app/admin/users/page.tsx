@@ -195,6 +195,7 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
 
 function UserRow({ user, onUpdated }: { user: AdminUserSummary; onUpdated: () => void }) {
   const [editing, setEditing] = useState(false);
+  const [email, setEmail] = useState(user.email);
   const [role, setRole] = useState<Role>(user.role);
   const [active, setActive] = useState(user.active);
   const [expirationDate, setExpirationDate] = useState(user.expiration_date);
@@ -202,6 +203,12 @@ function UserRow({ user, onUpdated }: { user: AdminUserSummary; onUpdated: () =>
   const [newPassword, setNewPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dupChecking, setDupChecking] = useState(false);
+  const [dupResult, setDupResult] = useState<{
+    total: number;
+    distinct: number;
+    duplicateGroups: { question: string; difficulty: string; count: number }[];
+  } | null>(null);
 
   async function save() {
     setSaving(true);
@@ -213,6 +220,10 @@ function UserRow({ user, onUpdated }: { user: AdminUserSummary; onUpdated: () =>
         expirationDate,
         questionsLimit,
       };
+      // El correo solo se manda si de verdad cambió — antes había que
+      // corregir un typo de correo (ej. dominio mal tipeado) con un
+      // script suelto contra la base.
+      if (email.trim().toLowerCase() !== user.email.toLowerCase()) body.email = email;
       if (newPassword) body.password = newPassword;
 
       const res = await fetch(`/api/admin/users/${user.id}`, {
@@ -272,6 +283,22 @@ function UserRow({ user, onUpdated }: { user: AdminUserSummary; onUpdated: () =>
     }
   }
 
+  async function checkDuplicates() {
+    setDupChecking(true);
+    setError(null);
+    setDupResult(null);
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}/duplicates`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'No se pudo revisar.');
+      setDupResult(json);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error inesperado.');
+    } finally {
+      setDupChecking(false);
+    }
+  }
+
   return (
     <>
       <tr>
@@ -317,11 +344,36 @@ function UserRow({ user, onUpdated }: { user: AdminUserSummary; onUpdated: () =>
                 Liberar dispositivo
               </button>
             )}
+            {user.role !== 'admin' && (
+              <button type="button" className="btn-secondary" disabled={dupChecking} onClick={checkDuplicates}>
+                {dupChecking ? 'Revisando…' : 'Ver repetidas'}
+              </button>
+            )}
           </div>
           {user.role === 'paid' && (
             <p className="hint" style={{ marginTop: '0.4rem' }}>
               {user.bound_device_id ? '🔒 Dispositivo vinculado' : 'Sin vincular aún'}
             </p>
+          )}
+          {dupResult && (
+            <div style={{ marginTop: '0.4rem', fontSize: '0.78rem' }}>
+              <p className="hint" style={{ margin: 0 }}>
+                {dupResult.total} preguntas, {dupResult.distinct} distintas
+                {dupResult.duplicateGroups.length > 0
+                  ? `, ${dupResult.duplicateGroups.length} repetida${dupResult.duplicateGroups.length > 1 ? 's' : ''}`
+                  : ' — sin repetidas'}
+              </p>
+              {dupResult.duplicateGroups.slice(0, 5).map((g, i) => (
+                <p key={i} className="hint" style={{ margin: '0.15rem 0 0' }}>
+                  x{g.count} ({g.difficulty}): {g.question}
+                </p>
+              ))}
+              {dupResult.duplicateGroups.length > 5 && (
+                <p className="hint" style={{ margin: '0.15rem 0 0' }}>
+                  … y {dupResult.duplicateGroups.length - 5} más
+                </p>
+              )}
+            </div>
           )}
         </td>
       </tr>
@@ -329,6 +381,15 @@ function UserRow({ user, onUpdated }: { user: AdminUserSummary; onUpdated: () =>
         <tr>
           <td colSpan={6}>
             <div className="grid-form">
+              <div>
+                <label htmlFor={`email-${user.id}`}>Correo</label>
+                <input
+                  id={`email-${user.id}`}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
               <div>
                 <label htmlFor={`role-${user.id}`}>Rol</label>
                 <select

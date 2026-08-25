@@ -21,6 +21,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
 
     const updatePayload: Record<string, unknown> = {};
+    if (parsed.data.email) updatePayload.email = parsed.data.email.toLowerCase();
     if (parsed.data.role) updatePayload.role = parsed.data.role;
     if (typeof parsed.data.active === 'boolean') updatePayload.active = parsed.data.active;
     if (parsed.data.expirationDate) updatePayload.expiration_date = parsed.data.expirationDate;
@@ -43,7 +44,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       .select(LIST_COLUMNS)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23505') {
+        return NextResponse.json({ error: 'Ya existe un usuario con ese correo.' }, { status: 409 });
+      }
+      throw error;
+    }
     if (!data) {
       return NextResponse.json({ error: 'Usuario no encontrado.' }, { status: 404 });
     }
