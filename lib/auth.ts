@@ -22,15 +22,10 @@ export const authOptions: AuthOptions = {
       credentials: {
         email: { label: 'Correo', type: 'email' },
         password: { label: 'Contraseña', type: 'password' },
-        // ID persistente generado en el navegador (ver app/login/page.tsx),
-        // no es un dato que tipee el usuario — viaja como credential más
-        // porque NextAuth solo deja mandar campos extra por acá.
-        deviceId: { label: 'Device', type: 'text' },
       },
       async authorize(credentials): Promise<NextAuthUser | null> {
         const email = normalizeIdentifier(credentials?.email ?? '');
         const password = credentials?.password ?? '';
-        const deviceId = credentials?.deviceId?.trim() || null;
 
         if (!email || !password) {
           throw new Error(GENERIC_LOGIN_ERROR);
@@ -82,34 +77,20 @@ export const authOptions: AuthOptions = {
           throw new Error(GENERIC_LOGIN_ERROR);
         }
 
-        // Candado de dispositivo: solo aplica a cuentas de pago (a pedido
-        // del cliente, para que un usuario no pueda "prestar" su cuenta).
-        // Admin y demo pueden seguir entrando desde cualquier lado.
-        if (userRow.role === 'paid') {
-          if (!deviceId) {
-            // No debería pasar desde /login (siempre manda un deviceId),
-            // pero sin uno no hay nada que validar ni vincular.
-            await recordFailedAttempt(email);
-            throw new Error(GENERIC_LOGIN_ERROR);
-          }
-          if (userRow.bound_device_id && userRow.bound_device_id !== deviceId) {
-            await recordFailedAttempt(email);
-            throw new Error(
-              'Esta cuenta ya está vinculada a otro dispositivo. Contacta al administrador.'
-            );
-          }
-        }
+        // No hay candado de dispositivo: cualquier cuenta puede entrar
+        // desde cualquier dispositivo. Lo único que impide el uso
+        // simultáneo es la sesión única de más abajo (current_session_token):
+        // el login que entra ahora invalida cualquier sesión previa de esa
+        // cuenta, sin importar el dispositivo.
 
         // 2) Login correcto: registrar éxito + limpiar intentos fallidos +
-        //    setear el nuevo token de sesión única (y vincular el
-        //    dispositivo si es la primera vez), las 3 en una sola llamada
-        //    RPC (antes eran 3 round-trips secuenciales).
+        //    setear el nuevo token de sesión única, las 3 en una sola
+        //    llamada RPC (antes eran 3 round-trips secuenciales).
         const sessionToken = randomUUID();
         const { error: completeError } = await supabase.rpc('complete_login', {
           p_user_id: userRow.id,
           p_identifier: email,
           p_session_token: sessionToken,
-          p_device_id: userRow.role === 'paid' ? deviceId : null,
         });
 
         if (completeError) {

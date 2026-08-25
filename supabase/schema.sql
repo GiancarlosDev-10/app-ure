@@ -46,10 +46,14 @@ create table if not exists public.users (
   -- Control de sesión única por cuenta:
   current_session_token       text,
   current_session_created_at  timestamptz,
-  -- Candado de dispositivo (solo se exige para role = 'paid', la lógica
-  -- vive en lib/auth.ts): se completa solo en el primer login exitoso de
-  -- la cuenta y a partir de ahí ningún otro dispositivo puede entrar hasta
-  -- que un admin lo libere (PATCH /api/admin/users/[id] con resetDevice).
+  -- Columna en desuso: hubo un candado de dispositivo para cuentas 'paid'
+  -- (bloqueaba el login desde un segundo dispositivo hasta que un admin lo
+  -- liberaba a mano). Se sacó porque generaba falsos bloqueos (el ID vivía
+  -- en localStorage del navegador, no en el hardware, así que cambiar de
+  -- navegador/PWA en el mismo dispositivo ya lo disparaba) y porque la
+  -- sesión única (current_session_token) ya evita el uso simultáneo sin
+  -- necesidad de bloquear el login. Se deja la columna sin usar en vez de
+  -- borrarla para no perder el historial de qué dispositivo se vinculó.
   bound_device_id              text,
   created_at                  timestamptz not null default now(),
   updated_at                  timestamptz not null default now()
@@ -233,17 +237,13 @@ $$ language plpgsql;
 -- cada una paga el cruce de continente, así que juntarlas en una función
 -- de Postgres ahorra ese costo dos veces.
 -- ------------------------------------------------------------
--- p_device_id: solo se manda (no-null) para cuentas role = 'paid' (ver
--- lib/auth.ts). Si la cuenta todavía no tiene bound_device_id, se lo
--- asigna acá (primer login = queda vinculada); si ya tenía uno, ya se
--- validó en authorize() que coincide, así que el coalesce no cambia nada.
 drop function if exists public.complete_login(uuid, text, text);
+drop function if exists public.complete_login(uuid, text, text, text);
 
 create or replace function public.complete_login(
   p_user_id uuid,
   p_identifier text,
-  p_session_token text,
-  p_device_id text default null
+  p_session_token text
 ) returns void as $$
 begin
   insert into public.login_attempts (identifier, success)
@@ -254,8 +254,7 @@ begin
 
   update public.users
   set current_session_token = p_session_token,
-      current_session_created_at = now(),
-      bound_device_id = coalesce(bound_device_id, p_device_id)
+      current_session_created_at = now()
   where id = p_user_id;
 end;
 $$ language plpgsql;

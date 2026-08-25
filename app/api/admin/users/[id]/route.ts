@@ -5,7 +5,7 @@ import { hashPassword } from '@/lib/password';
 import { updateUserSchema } from '@/lib/schemas';
 
 const LIST_COLUMNS =
-  'id, email, role, active, expiration_date, questions_used, questions_limit, alert_threshold, bound_device_id, created_at';
+  'id, email, role, active, expiration_date, questions_used, questions_limit, alert_threshold, created_at';
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -31,9 +31,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       updatePayload.password_hash = await hashPassword(parsed.data.password);
       // Un reset de contraseña corta cualquier sesión activa (fuerza re-login).
       updatePayload.current_session_token = null;
-    }
-    if (parsed.data.resetDevice) {
-      updatePayload.bound_device_id = null;
     }
 
     const supabase = getSupabaseAdmin();
