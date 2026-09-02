@@ -130,6 +130,30 @@ export function extractCitedPages(explanation: string): number[] {
   return [...tail[1].matchAll(/\d+/g)].map((m) => Number(m[0]));
 }
 
+// 1 de cada 3 preguntas sale en formato "completar el espacio en blanco".
+const CLOZE_EVERY = 3;
+
+/**
+ * Decide si a esta pregunta le toca el formato "completar".
+ *
+ * OJO con el detalle que motiva el hash: `windowSeed` ya elige la ventana
+ * del documento (`seed % cantidadDeVentanas`). Si el formato saliera de
+ * `seed % 3` directo, en cualquier documento con 3, 6, 9 o 15 ventanas
+ * ambos ciclos quedarían sincronizados y SIEMPRE las mismas páginas
+ * saldrían en formato completar, mientras que el resto del libro nunca lo
+ * usaría. El hash rompe esa correlación: mezcla los bits del seed de forma
+ * no lineal, así el formato queda repartido parejo sobre todas las
+ * ventanas. (Multiplicar por una constante no servía: k*seed y seed dan el
+ * mismo resto mod 3 si k ≡ 1 mod 3.)
+ */
+function shouldUseCloze(windowSeed: number): boolean {
+  let x = windowSeed | 0;
+  x = Math.imul(x ^ (x >>> 16), 2246822507);
+  x = Math.imul(x ^ (x >>> 13), 3266489909);
+  const hashed = (x ^ (x >>> 16)) >>> 0;
+  return hashed % CLOZE_EVERY === 0;
+}
+
 export function normalizeQuestionText(s: string): string {
   return s
     .trim()
@@ -165,6 +189,7 @@ export async function generateQuestion(
 
   const context = pickContextWindow(markdown, windowSeed);
   const hasPageMarkers = /\[página \d+\]/i.test(context);
+  const useCloze = shouldUseCloze(windowSeed);
 
   const completion = await client.chat.completions.create({
     model,
@@ -231,6 +256,35 @@ export async function generateQuestion(
         content: [
           `Nivel de dificultad: ${difficulty}. ${DIFFICULTY_GUIDE[difficulty]}`,
           '',
+          // El formato lo decide el código (1 de cada 3), no el modelo: pedirle
+          // "a veces usá este formato" da un cumplimiento irregular, igual que
+          // pasaba con la cita de página antes de volverla un campo del JSON.
+          ...(useCloze
+            ? [
+                'FORMATO DE ESTA PREGUNTA: completar el espacio en blanco.',
+                'En vez de una pregunta con signo de interrogación, "question" debe ser una AFIRMACIÓN tomada',
+                'del material con exactamente UN espacio en blanco escrito como "______" (seis guiones bajos).',
+                'Las 4 opciones son los candidatos a llenar ese espacio: cada una tiene que encajar',
+                'gramaticalmente en la oración, de modo que las cuatro se lean como frases bien formadas y',
+                'solo el contenido las diferencie.',
+                'El espacio en blanco debe caer sobre el concepto que se evalúa (un término, una clasificación',
+                'o una conclusión), nunca sobre una palabra de relleno como un artículo, una preposición o un',
+                'verbo auxiliar. No pongas más de un espacio en blanco.',
+                // Salió en la prueba real: "El Jefe, como líder, debe ser el único
+                // ______ que conduce al grupo", con la respuesta "Líder". La palabra
+                // ya estaba en la oración, así que se acertaba sin saber el tema.
+                'PROHIBIDO que la respuesta correcta (o una variante evidente de ella) aparezca ya escrita en',
+                'la parte visible de la afirmación: si el propio enunciado contiene la palabra que va en el',
+                'espacio, la pregunta se responde sola. Reformulá la oración para que eso no pase.',
+                'La afirmación debe tener contexto suficiente para ser respondible por alguien que estudió el',
+                'material, y leerse con naturalidad: nada de frases forzadas o con redacción retorcida solo',
+                'para acomodar el espacio en blanco.',
+                'La regla de dificultad del nivel sigue aplicando igual: en intermedio y avanzado lo que va en',
+                'el espacio no puede ser un dato escrito tal cual en una sola línea del material, sino algo que',
+                'exija combinar las partes que pide el nivel.',
+                '',
+              ]
+            : []),
           'Material de estudio:',
           '"""',
           context,
@@ -297,7 +351,11 @@ export async function generateQuestion(
   }
 
   return {
-    question: result.data.question,
+    // El modelo escribe el espacio con cantidades distintas de guiones bajos
+    // (salieron de 5, 6 y 10 en la misma tanda). Se normaliza acá para que
+    // en pantalla el hueco se vea siempre igual, sin depender de que acierte
+    // el largo exacto.
+    question: result.data.question.replace(/_{3,}/g, '______'),
     options: result.data.options as [string, string, string, string],
     correctIndex: result.data.correctIndex,
     explanation: buildExplanation(result.data.explanation, hasPageMarkers, citedPages),
