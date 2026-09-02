@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireRole, handleApiError, ApiAuthError } from '@/lib/apiAuth';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
-import { generateQuestion, normalizeQuestionText } from '@/lib/openai';
+import { generateQuestion, normalizeQuestionText, extractCitedPages } from '@/lib/openai';
 import { generateQuestionSchema } from '@/lib/schemas';
 
 // Cuántas preguntas recientes (de este usuario+contenido) se revisan para
@@ -9,6 +9,12 @@ import { generateQuestionSchema } from '@/lib/schemas';
 // esto (usuarios con miles de preguntas de límite, pero que en la
 // práctica reportan repetidas mucho antes de llegar ahí).
 const DEDUPE_WINDOW = 150;
+
+// De cuántas preguntas recientes se toman las páginas ya usadas para
+// pedirle al modelo que cambie de tema. Corto a propósito: es la queja
+// concreta ("3, 4, 5 preguntas seguidas de la misma página"), y una lista
+// larga terminaría vetando medio documento.
+const RECENT_PAGES_WINDOW = 8;
 const MAX_RETRIES_ON_DUPLICATE = 2;
 
 export async function POST(req: Request) {
@@ -48,7 +54,7 @@ export async function POST(req: Request) {
         .single(),
       supabase
         .from('quiz_questions')
-        .select('question', { count: 'exact' })
+        .select('question, explanation', { count: 'exact' })
         .eq('user_id', userId)
         .eq('content_id', parsed.data.contentId)
         .order('created_at', { ascending: false })
@@ -78,11 +84,23 @@ export async function POST(req: Request) {
     }
 
     const windowSeed = historyResult.count ?? 0;
-    const recentQuestions = new Set(
-      (historyResult.data ?? []).map((q) => normalizeQuestionText(q.question))
-    );
+    const history = historyResult.data ?? [];
+    const recentQuestions = new Set(history.map((q) => normalizeQuestionText(q.question)));
 
-    let generated = await generateQuestion(content.markdown, parsed.data.difficulty, windowSeed);
+    // Páginas citadas en las últimas preguntas: se le pasan al modelo para
+    // que no vuelva a preguntar sobre lo mismo. Solo las más recientes —
+    // con toda la ventana de dedupe (150) la lista sería tan larga que
+    // taparía medio documento y no dejaría margen para generar nada.
+    const recentPages = [
+      ...new Set(history.slice(0, RECENT_PAGES_WINDOW).flatMap((q) => extractCitedPages(q.explanation ?? ''))),
+    ].sort((a, b) => a - b);
+
+    let generated = await generateQuestion(
+      content.markdown,
+      parsed.data.difficulty,
+      windowSeed,
+      recentPages
+    );
     let retries = 0;
     while (
       recentQuestions.has(normalizeQuestionText(generated.question)) &&
@@ -94,7 +112,8 @@ export async function POST(req: Request) {
       generated = await generateQuestion(
         content.markdown,
         parsed.data.difficulty,
-        windowSeed + retries * 97
+        windowSeed + retries * 97,
+        recentPages
       );
     }
 
