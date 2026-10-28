@@ -46,8 +46,9 @@ export async function POST(req: Request) {
       role: parsed.data.role,
       active: parsed.data.active,
     };
-    if (parsed.data.expirationDate) insertPayload.expiration_date = parsed.data.expirationDate;
-    if (parsed.data.questionsLimit) insertPayload.questions_limit = parsed.data.questionsLimit;
+    // undefined = usar el default de la base; null = sin vencimiento / sin límite.
+    if (parsed.data.expirationDate !== undefined) insertPayload.expiration_date = parsed.data.expirationDate;
+    if (parsed.data.questionsLimit !== undefined) insertPayload.questions_limit = parsed.data.questionsLimit;
 
     const { data, error } = await supabase
       .from('users')

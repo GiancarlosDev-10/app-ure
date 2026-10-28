@@ -34,3 +34,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# PDFs de origen y markdown extraído (material del cliente, no se versiona)
+docs/

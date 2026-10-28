@@ -24,8 +24,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (parsed.data.email) updatePayload.email = parsed.data.email.toLowerCase();
     if (parsed.data.role) updatePayload.role = parsed.data.role;
     if (typeof parsed.data.active === 'boolean') updatePayload.active = parsed.data.active;
-    if (parsed.data.expirationDate) updatePayload.expiration_date = parsed.data.expirationDate;
-    if (parsed.data.questionsLimit) updatePayload.questions_limit = parsed.data.questionsLimit;
+    // undefined = no tocar; null = sin vencimiento / sin límite.
+    if (parsed.data.expirationDate !== undefined) updatePayload.expiration_date = parsed.data.expirationDate;
+    if (parsed.data.questionsLimit !== undefined) updatePayload.questions_limit = parsed.data.questionsLimit;
 
     if (parsed.data.password) {
       updatePayload.password_hash = await hashPassword(parsed.data.password);

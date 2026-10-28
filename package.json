@@ -12,7 +12,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "create-admin": "bun run scripts/create-admin.ts"
+    "create-admin": "bun run scripts/create-admin.ts",
+    "spij-to-md": "bun run scripts/spij-to-md.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.45.4",

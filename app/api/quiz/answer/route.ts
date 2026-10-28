@@ -8,7 +8,7 @@ interface SubmitAnswerResult {
   explanation: string;
   is_correct: boolean;
   questions_used: number;
-  questions_limit: number;
+  questions_limit: number | null; // null = sin límite
 }
 
 export async function POST(req: Request) {

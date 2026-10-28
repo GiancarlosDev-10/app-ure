@@ -12,8 +12,12 @@ const ROLE_LABEL: Record<Role, string> = {
   paid: 'Pago',
 };
 
-const DEFAULT_EXPIRATION = '2026-09-30';
-const DEFAULT_LIMIT = 2000;
+// En los formularios, campo vacío = sin vencimiento / sin límite (se manda null).
+const DEFAULT_EXPIRATION = '';
+const DEFAULT_LIMIT = '2000';
+
+const dateOrNull = (s: string) => (s ? s : null);
+const limitOrNull = (s: string) => (s.trim() ? Number(s) : null);
 
 export default function AdminUsersPage() {
   const { data: session } = useSession();
@@ -112,8 +116,8 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
           email,
           password,
           role,
-          expirationDate,
-          questionsLimit,
+          expirationDate: dateOrNull(expirationDate),
+          questionsLimit: limitOrNull(questionsLimit),
         }),
       });
       const json = await res.json();
@@ -165,7 +169,7 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
           </select>
         </div>
         <div>
-          <label htmlFor="new-expiration">Vencimiento</label>
+          <label htmlFor="new-expiration">Vencimiento (vacío = sin vencimiento)</label>
           <input
             id="new-expiration"
             type="date"
@@ -180,7 +184,8 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
             type="number"
             min={1}
             value={questionsLimit}
-            onChange={(e) => setQuestionsLimit(Number(e.target.value))}
+            placeholder="Vacío = sin límite"
+            onChange={(e) => setQuestionsLimit(e.target.value)}
           />
         </div>
       </div>
@@ -198,8 +203,8 @@ function UserRow({ user, onUpdated }: { user: AdminUserSummary; onUpdated: () =>
   const [email, setEmail] = useState(user.email);
   const [role, setRole] = useState<Role>(user.role);
   const [active, setActive] = useState(user.active);
-  const [expirationDate, setExpirationDate] = useState(user.expiration_date);
-  const [questionsLimit, setQuestionsLimit] = useState(user.questions_limit);
+  const [expirationDate, setExpirationDate] = useState(user.expiration_date ?? '');
+  const [questionsLimit, setQuestionsLimit] = useState(user.questions_limit?.toString() ?? '');
   const [newPassword, setNewPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -217,8 +222,8 @@ function UserRow({ user, onUpdated }: { user: AdminUserSummary; onUpdated: () =>
       const body: Record<string, unknown> = {
         role,
         active,
-        expirationDate,
-        questionsLimit,
+        expirationDate: dateOrNull(expirationDate),
+        questionsLimit: limitOrNull(questionsLimit),
       };
       // El correo solo se manda si de verdad cambió — antes había que
       // corregir un typo de correo (ej. dominio mal tipeado) con un
@@ -291,9 +296,9 @@ function UserRow({ user, onUpdated }: { user: AdminUserSummary; onUpdated: () =>
             {user.active ? 'Activo' : 'Inactivo'}
           </span>
         </td>
-        <td>{user.expiration_date}</td>
+        <td>{user.expiration_date ?? 'Sin vencimiento'}</td>
         <td>
-          {user.questions_used} / {user.questions_limit}
+          {user.questions_used} / {user.questions_limit ?? '∞'}
         </td>
         <td>
           <div className="toolbar">
@@ -378,7 +383,7 @@ function UserRow({ user, onUpdated }: { user: AdminUserSummary; onUpdated: () =>
                 </select>
               </div>
               <div>
-                <label htmlFor={`exp-${user.id}`}>Vencimiento</label>
+                <label htmlFor={`exp-${user.id}`}>Vencimiento (vacío = sin vencimiento)</label>
                 <input
                   id={`exp-${user.id}`}
                   type="date"
@@ -393,7 +398,8 @@ function UserRow({ user, onUpdated }: { user: AdminUserSummary; onUpdated: () =>
                   type="number"
                   min={1}
                   value={questionsLimit}
-                  onChange={(e) => setQuestionsLimit(Number(e.target.value))}
+                  placeholder="Vacío = sin límite"
+                  onChange={(e) => setQuestionsLimit(e.target.value)}
                 />
               </div>
               <div>

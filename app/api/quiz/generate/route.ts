@@ -65,10 +65,11 @@ export async function POST(req: Request) {
     if (userError || !userRow) throw new ApiAuthError('Usuario no encontrado.', 404);
 
     const today = new Date().toISOString().slice(0, 10);
-    if (!userRow.active || userRow.expiration_date < today) {
+    // expiration_date / questions_limit en null = sin vencimiento / sin límite.
+    if (!userRow.active || (userRow.expiration_date !== null && userRow.expiration_date < today)) {
       throw new ApiAuthError('Tu acceso está inactivo o venció.', 403);
     }
-    if (userRow.questions_used >= userRow.questions_limit) {
+    if (userRow.questions_limit !== null && userRow.questions_used >= userRow.questions_limit) {
       throw new ApiAuthError(
         `Llegaste al límite de ${userRow.questions_limit} preguntas. Contacta al administrador.`,
         403

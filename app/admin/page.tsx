@@ -14,7 +14,7 @@ interface UsageAlertRow {
   id: string;
   email: string;
   questions_used: number;
-  questions_limit: number;
+  questions_limit: number | null;
   alert_threshold: number;
 }
 
@@ -30,7 +30,8 @@ async function getUsersNearLimit(): Promise<UsageAlertRow[]> {
     .in('role', ['demo', 'paid']);
 
   if (error || !data) return [];
-  return data.filter((u) => u.questions_used >= u.alert_threshold);
+  // Sin límite (questions_limit null) no hay "cerca del límite" que avisar.
+  return data.filter((u) => u.questions_limit !== null && u.questions_used >= u.alert_threshold);
 }
 
 interface UsageStats {

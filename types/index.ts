@@ -7,9 +7,9 @@ export interface UserRow {
   password_hash: string;
   role: Role;
   active: boolean;
-  expiration_date: string; // date ISO 'YYYY-MM-DD'
+  expiration_date: string | null; // date ISO 'YYYY-MM-DD'; null = sin vencimiento
   questions_used: number;
-  questions_limit: number;
+  questions_limit: number | null; // null = sin límite (el contador igual se lleva)
   alert_threshold: number;
   current_session_token: string | null;
   current_session_created_at: string | null;
@@ -41,6 +41,7 @@ export interface QuizQuestionRow {
   explanation: string;
   user_answer_index: number | null;
   is_correct: boolean | null;
+  review_cleared_at: string | null;
   answered_at: string | null;
   prompt_tokens: number | null;
   completion_tokens: number | null;
@@ -54,9 +55,9 @@ export interface AdminUserSummary {
   email: string;
   role: Role;
   active: boolean;
-  expiration_date: string;
+  expiration_date: string | null;
   questions_used: number;
-  questions_limit: number;
+  questions_limit: number | null;
   alert_threshold: number;
   created_at: string;
 }

@@ -25,9 +25,9 @@ create extension if not exists "pgcrypto";
 --   contraseña hasheada -> password_hash (bcrypt)
 --   rol                 -> role ('admin' | 'demo' | 'paid')
 --   activo              -> active
---   fecha vencimiento   -> expiration_date (default 2026-09-30)
---   preguntas usadas    -> questions_used
---   límite de preguntas -> questions_limit (default 2000)
+--   fecha vencimiento   -> expiration_date (null = sin vencimiento, default)
+--   preguntas usadas    -> questions_used (se cuenta siempre, haya límite o no)
+--   límite de preguntas -> questions_limit (default 2000; null = sin límite)
 -- ------------------------------------------------------------
 create table if not exists public.users (
   id                          uuid primary key default gen_random_uuid(),
@@ -36,9 +36,9 @@ create table if not exists public.users (
   role                        text not null default 'demo'
                               check (role in ('admin', 'demo', 'paid')),
   active                      boolean not null default true,
-  expiration_date             date not null default '2026-09-30',
+  expiration_date             date,
   questions_used              integer not null default 0 check (questions_used >= 0),
-  questions_limit             integer not null default 2000 check (questions_limit > 0),
+  questions_limit             integer default 2000 check (questions_limit > 0),
   -- Umbral para el aviso "cerca del límite" que se ve en /admin (banner
   -- calculado en vivo: questions_used >= alert_threshold). No dispara
   -- correo, solo se muestra en el dashboard del admin.
@@ -61,6 +61,12 @@ create table if not exists public.users (
 
 create index if not exists users_email_idx on public.users (lower(email));
 create index if not exists users_role_idx on public.users (role);
+
+-- Para bases creadas cuando vencimiento y límite eran obligatorios:
+-- null pasa a significar "sin vencimiento" / "sin límite".
+alter table public.users alter column expiration_date drop not null;
+alter table public.users alter column expiration_date drop default;
+alter table public.users alter column questions_limit drop not null;
 
 -- ------------------------------------------------------------
 -- Tabla: study_content
@@ -104,8 +110,15 @@ create table if not exists public.quiz_questions (
   -- inventa el gasto histórico (ver lib/openaiCost.ts).
   prompt_tokens     integer,
   completion_tokens integer,
+  -- Modo "Repasar mis errores": cuándo el alumno acertó en el repaso una
+  -- pregunta que había fallado. Desde ahí deja de aparecer en el repaso.
+  -- is_correct NO se toca: sigue diciendo que la primera vez la falló.
+  review_cleared_at timestamptz,
   created_at      timestamptz not null default now()
 );
+
+-- Para bases creadas antes de que existiera la columna.
+alter table public.quiz_questions add column if not exists review_cleared_at timestamptz;
 
 create index if not exists quiz_questions_user_id_idx on public.quiz_questions (user_id);
 

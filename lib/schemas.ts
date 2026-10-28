@@ -9,8 +9,9 @@ export const createUserSchema = z.object({
   password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
   role: z.enum(['admin', 'demo', 'paid']).default('demo'),
   active: z.boolean().default(true),
-  expirationDate: dateStr.optional(),
-  questionsLimit: z.number().int().positive().optional(),
+  // null = sin vencimiento / sin límite
+  expirationDate: dateStr.nullable().optional(),
+  questionsLimit: z.number().int().positive().nullable().optional(),
 });
 
 export const updateUserSchema = z
@@ -18,8 +19,8 @@ export const updateUserSchema = z
     email: z.string().trim().email('Correo inválido').optional(),
     role: z.enum(['admin', 'demo', 'paid']).optional(),
     active: z.boolean().optional(),
-    expirationDate: dateStr.optional(),
-    questionsLimit: z.number().int().positive().optional(),
+    expirationDate: dateStr.nullable().optional(),
+    questionsLimit: z.number().int().positive().nullable().optional(),
     password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: 'Nada para actualizar.' });
@@ -43,6 +44,10 @@ export const updateContentSchema = z.object({
 export const generateQuestionSchema = z.object({
   contentId: z.string().uuid('Contenido inválido'),
   difficulty: z.enum(['basico', 'intermedio', 'avanzado']),
+});
+
+export const reviewListSchema = z.object({
+  contentId: z.string().uuid('Contenido inválido'),
 });
 
 export const answerQuestionSchema = z.object({

@@ -133,7 +133,8 @@ export const authOptions: AuthOptions = {
         const stillValid =
           !!current &&
           current.active &&
-          current.expiration_date >= today &&
+          // null = sin vencimiento
+          (current.expiration_date === null || current.expiration_date >= today) &&
           current.current_session_token === token.sessionToken;
 
         token.invalidated = !stillValid;
