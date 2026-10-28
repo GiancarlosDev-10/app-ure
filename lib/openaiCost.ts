@@ -7,6 +7,8 @@
 const PRICING_PER_MILLION_TOKENS: Record<string, { input: number; output: number }> = {
   'gpt-4o-mini': { input: 0.15, output: 0.6 },
   'gpt-4.1-nano': { input: 0.1, output: 0.4 },
+  'gpt-4.1-mini': { input: 0.4, output: 1.6 },
+  'gpt-5-mini': { input: 0.25, output: 2 },
   'gpt-4o': { input: 2.5, output: 10 },
 };
 

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { Difficulty, GeneratedQuestion } from '@/types';
 
 const apiKey = process.env.OPENAI_API_KEY;
-const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+const model = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
 
 // No revienta al importar (a diferencia de supabaseAdmin.ts) porque este
 // módulo también se importa en build time; el error real aparece recién
@@ -53,7 +53,7 @@ const DIFFICULTY_TEMPERATURE: Record<Difficulty, number> = {
 };
 
 // Tope de caracteres que se mandan como contexto al modelo por llamada.
-// Bajarlo es la palanca principal de velocidad: la latencia de gpt-4o-mini
+// Bajarlo es la palanca principal de velocidad: la latencia del modelo
 // crece con el tamaño del prompt. 20k caracteres (~10-15 páginas de un
 // manual) alcanza de sobra para generar UNA pregunta bien fundamentada.
 const MAX_CONTEXT_CHARS = 20_000;
@@ -191,9 +191,18 @@ export async function generateQuestion(
   const hasPageMarkers = /\[página \d+\]/i.test(context);
   const useCloze = shouldUseCloze(windowSeed);
 
+  // Los modelos de razonamiento (gpt-5*) no aceptan temperature: rechazan
+  // la llamada si viene. En su lugar se les baja el esfuerzo de
+  // razonamiento — esos tokens se cobran como salida, y "low" alcanza para
+  // una pregunta. El SDK 4.56 no tipa reasoning_effort, de ahí el cast.
+  const isReasoningModel = model.startsWith('gpt-5');
+  const sampling = isReasoningModel
+    ? ({ reasoning_effort: 'low' } as Record<string, unknown>)
+    : { temperature: DIFFICULTY_TEMPERATURE[difficulty] };
+
   const completion = await client.chat.completions.create({
     model,
-    temperature: DIFFICULTY_TEMPERATURE[difficulty],
+    ...sampling,
     response_format: { type: 'json_object' },
     messages: [
       {
@@ -202,8 +211,14 @@ export async function generateQuestion(
           'Eres un generador de preguntas de examen en español.',
           'Trabajas EXCLUSIVAMENTE con el material que te pasan: nunca inventas datos que no estén ahí.',
           'Devuelves únicamente un objeto JSON, sin texto adicional, con esta forma exacta:',
-          '{"question": string, "options": [string, string, string, string], "correctIndex": number, "explanation": string, "sourcePages": number[]}',
-          '"correctIndex" es la posición (0 a 3) de la opción correcta dentro de "options".',
+          // "explanation" va ANTES de "correctIndex" a propósito: con el orden
+          // anterior el modelo elegía el índice primero y después escribía una
+          // explicación que a veces justificaba OTRA cosa (medido en una tanda
+          // de 11 preguntas reales: 2 con explicación y respuesta que no
+          // coincidían). Razonar primero y elegir después las alinea.
+          '{"question": string, "options": [string, string, string, string], "explanation": string, "correctIndex": number, "sourcePages": number[]}',
+          '"correctIndex" es la posición (0 a 3) de la opción correcta dentro de "options", y tiene que ser',
+          'exactamente la opción que justificaste en "explanation".',
           // Antes acá solo decía "las 4 opciones deben ser plausibles y del mismo
           // estilo". En la práctica el modelo igual inventaba distractores genéricos
           // o ajenos al tema, y la correcta se sacaba por descarte sin saber el
@@ -227,10 +242,24 @@ export async function generateQuestion(
           'así, acortala o alargá las incorrectas hasta emparejarlas antes de responder. Que la correcta',
           'se note por ser la más elaborada permite acertar por descarte sin saber el tema.',
           '5) Prohibido "todas las anteriores", "ninguna de las anteriores" y opciones de relleno.',
-          '"explanation" debe justificar la respuesta correcta citando o parafraseando el material,',
-          'y además explicar en una frase por qué la opción más tentadora de las incorrectas no sirve.',
+          // Salió en una prueba real: "la pensión deja de regir a la mayoría de
+          // edad" como correcta y "se mantiene si sigue una profesión con éxito"
+          // como incorrecta, cuando el material dice las dos cosas (la segunda
+          // es la excepción). Quien estudió marcaba la "incorrecta".
+          '6) Ninguna opción incorrecta puede ser verdadera según el material, ni siquiera como excepción,',
+          'caso especial o salvedad. Antes de responder revisá las 3 contra el texto: si el material respalda',
+          'alguna, total o parcialmente, reemplazala por otra.',
+          '7) La opción correcta tiene que ser un hecho que el material afirma (o que se deduce sin margen de',
+          'duda de lo que afirma), nunca una opinión, una valoración ni una consecuencia hipotética',
+          '("podría...", "sería conveniente..."). Si para elegirla alcanza el sentido común sin haber',
+          'estudiado, la pregunta no sirve.',
+          '"explanation" se escribe ANTES de elegir "correctIndex": tiene que nombrar la opción correcta,',
+          'justificar cada afirmación que esa opción hace citando o parafraseando el material (si la opción',
+          'dice dos cosas, justificá las dos), y explicar en una frase por qué la opción incorrecta más',
+          'tentadora no sirve.',
           'La pregunta se redacta como una pregunta de examen normal, directa: nunca menciones "el material",',
-          '"el texto", "el documento" ni frases como "según el material de estudio" dentro de "question".',
+          '"el texto", "el documento", "el decreto mencionado", "la norma citada" ni frases como',
+          '"según el material de estudio" dentro de "question". Si hace falta, nombrá la norma por su nombre.',
           'Si en el material aparecen marcadores de página con el formato exacto [página N], "sourcePages"',
           'es OBLIGATORIO: poné ahí los números de las páginas en las que está lo que justifica la respuesta,',
           'tomados de los marcadores [página N] que ves en el material (nunca inventes un número que no aparezca).',

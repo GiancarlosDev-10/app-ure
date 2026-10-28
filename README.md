@@ -62,7 +62,7 @@ public/
    asignó y un nivel (básico/intermedio/avanzado).
 2. `POST /api/quiz/generate` revalida server-side que el contenido sea
    suyo, que la cuenta esté activa/vigente y que no haya llegado al
-   límite; recién ahí llama a OpenAI (`lib/openai.ts`, `gpt-4o-mini`,
+   límite; recién ahí llama a OpenAI (`lib/openai.ts`, `gpt-4.1-mini`,
    `response_format: json_object`) pidiéndole una pregunta en JSON, la
    valida con zod y la guarda en `quiz_questions`. **Al cliente solo se le
    manda la pregunta y las 4 opciones — nunca el índice correcto ni la

@@ -41,7 +41,7 @@ interface UsageStats {
 
 async function getUsageStats(): Promise<UsageStats> {
   const supabase = getSupabaseAdmin();
-  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+  const model = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
 
   // Cuenta total y tokens no dependen entre sí: van en paralelo.
   const [{ count }, { data: tokenRows }] = await Promise.all([
