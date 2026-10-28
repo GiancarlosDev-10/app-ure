@@ -8,14 +8,20 @@ import { CloseIcon } from './icons';
 // abierto (el padre lo renderiza condicionalmente), así cada apertura
 // sortea un pica pica nuevo y la animación arranca de cero.
 
-// Ráfaga de ~5 s en total: los papelitos salen escalonados durante los
-// primeros 2 s (MAX_DELAY) y cada uno tarda 2,5–3 s en caer, así el último
-// termina cerca de los 5 s. Más piezas que en una ráfaga corta para que no
-// se vea ralo al repartirlas en más tiempo.
-const PIECE_COUNT = 90;
-const MAX_DELAY_S = 2;
-const MIN_FALL_S = 2.5;
+// Ráfaga de ~5 s en total. El pica pica arranca recién cuando el pop-up
+// terminó de aparecer (START_AFTER_S = duración de modal-pop en globals.css):
+// animar las dos cosas a la vez trababa los primeros cuadros en celulares.
+// Después los papelitos salen escalonados durante MAX_DELAY_S y cada uno
+// tarda 2,6–3 s en caer, así el último termina cerca de los 5 s.
+const START_AFTER_S = 0.35;
+const MAX_DELAY_S = 1.8;
+const MIN_FALL_S = 2.6;
 const MAX_FALL_S = 3;
+// Menos piezas en pantallas chicas: en el celular se ve igual de lleno
+// (la pantalla es más angosta) y le cuesta menos al procesador.
+const PIECE_COUNT_DESKTOP = 90;
+const PIECE_COUNT_MOBILE = 50;
+const MOBILE_MAX_WIDTH = 768;
 const COLORS = ['var(--accent)', '#3b82f6', '#22c55e', '#ef4444', '#a855f7', '#f97316', '#f2f4f8'];
 
 interface Piece {
@@ -29,9 +35,11 @@ interface Piece {
 }
 
 function randomPieces(): Piece[] {
-  return Array.from({ length: PIECE_COUNT }, () => ({
+  // Solo se monta en el cliente (al tocar el botón), así que window existe.
+  const count = window.innerWidth < MOBILE_MAX_WIDTH ? PIECE_COUNT_MOBILE : PIECE_COUNT_DESKTOP;
+  return Array.from({ length: count }, () => ({
     left: Math.random() * 100,
-    delay: Math.random() * MAX_DELAY_S,
+    delay: START_AFTER_S + Math.random() * MAX_DELAY_S,
     duration: MIN_FALL_S + Math.random() * (MAX_FALL_S - MIN_FALL_S),
     color: COLORS[Math.floor(Math.random() * COLORS.length)],
     size: 6 + Math.random() * 6,

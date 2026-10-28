@@ -481,19 +481,24 @@ thead th {
   pointer-events: none;
 }
 
+/* Caída pareja (linear): antes usaba una curva que arrancaba a toda
+   velocidad y frenaba, y en el celular se veía "duro" al salir. Cada
+   papelito entra desde arriba, fuera de la pantalla, en vez de aparecer de
+   golpe en el borde. will-change pide que se anime en la GPU. */
 .confetti-piece {
   position: absolute;
-  top: -12px;
+  top: 0;
   opacity: 0;
+  will-change: transform, opacity;
   animation-name: confetti-fall;
-  animation-timing-function: cubic-bezier(0.25, 0.6, 0.5, 1);
+  animation-timing-function: linear;
   animation-fill-mode: forwards;
 }
 
 @keyframes confetti-fall {
   0% {
     opacity: 1;
-    transform: translate3d(0, 0, 0) rotate(0deg);
+    transform: translate3d(0, -8vh, 0) rotate(0deg);
   }
   85% {
     opacity: 1;
