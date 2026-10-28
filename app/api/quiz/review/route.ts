@@ -3,6 +3,11 @@ import { requireRole, handleApiError } from '@/lib/apiAuth';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { reviewListSchema } from '@/lib/schemas';
 
+// Depende de la sesión del usuario: sin esto Next intenta pre-renderizarla
+// en el build, getServerSession lee headers() y el try/catch de abajo
+// imprime "Dynamic server usage" como si fuera un error real.
+export const dynamic = 'force-dynamic';
+
 // Tope de errores que se traen para repasar de una vez. Sobra para una
 // sesión de repaso y mantiene la respuesta chica.
 const REVIEW_LIMIT = 200;

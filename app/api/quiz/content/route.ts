@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import { requireRole, handleApiError } from '@/lib/apiAuth';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
+// Depende de la sesión del usuario: sin esto Next intenta pre-renderizarla
+// en el build, getServerSession lee headers() y el try/catch de abajo
+// imprime "Dynamic server usage" como si fuera un error real.
+export const dynamic = 'force-dynamic';
+
 // Contenido markdown asignado al usuario logueado (solo el activo).
 // El alumno elige entre esto para generar preguntas; nunca ve el
 // markdown de otro usuario.
